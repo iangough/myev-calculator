@@ -390,17 +390,20 @@ $("copy").onclick=()=>{calc();const t=textOut();
  try{navigator.clipboard.writeText(t).then(done,fail)}catch(e){fail()}};
 
 /* ---------- journeys ---------- */
+let selTrip=null;
 function renderTrips(){
  const T=S.trips,sum=f=>T.reduce((a,t)=>a+f(t),0);
  const mi=sum(t=>t.miles),c1=sum(t=>t.c1),c2=sum(t=>t.c2),p=sum(t=>t.petrol);
  $("sumbox").innerHTML=[["Journeys",T.length],["Miles",mi.toFixed(0)],["EV, cheap",gbp(c1)],["EV, normal",gbp(c2)],["Petrol",gbp(p)],["Saved vs petrol",gbp(p-c1)]]
   .map(([a,b])=>`<div><small>${a}</small><span class="big">${b}</span></div>`).join("");
- $("tripsum").textContent=T.length?`Recent journeys (${T.length}): latest ${(T[0].from||"?")} to ${(T[0].to||"?")}, ${T[0].miles.toFixed(0)} mi`:"Recent journeys (none yet)";
+ $("tripsum").textContent=T.length?`Recent journeys (${T.length}${T.some(x=>x.fav)?", "+T.filter(x=>x.fav).length+" favourite":""}): latest ${(T[0].from||"?")} to ${(T[0].to||"?")}, ${T[0].miles.toFixed(0)} mi`:"Recent journeys (none yet)";
+ const ordered=T.slice().sort((a,b)=>(b.fav?1:0)-(a.fav?1:0));
  const ds=t=>new Date(t.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
  const short=s=>String(s||"").trim()||"?";
- $("triplist").innerHTML=T.length?`<label for="tripsel">Pick a journey (${T.length} saved)</label><select id="tripsel">${T.map(t=>`<option value="${t.id}">${esc(short(t.from))} to ${esc(short(t.to))} · ${esc(t.car)}</option>`).join("")}</select><div id="tripdet" style="margin-top:10px"></div>`:`<p class="note">No journeys saved yet. Press Save journey to keep one here.</p>`;
+ $("triplist").innerHTML=T.length?`<label for="tripsel">Pick a journey (${T.length} saved)</label><select id="tripsel">${ordered.map(t=>`<option value="${t.id}">${t.fav?"★ ":""}${esc(short(t.from))} to ${esc(short(t.to))} · ${esc(t.car)}</option>`).join("")}</select><div id="tripdet" style="margin-top:10px"></div>`:`<p class="note">No journeys saved yet. Press Save journey to keep one here.</p>`;
  if(T.length){
-  const show=()=>{const t=T.find(x=>x.id===$("tripsel").value);if(!t)return;
+  if(selTrip&&T.find(x=>x.id===selTrip))$("tripsel").value=selTrip;
+  const show=()=>{const t=T.find(x=>x.id===$("tripsel").value);if(!t)return;selTrip=t.id;
    $("tripdet").innerHTML=`<table><tr><td>Route</td><td style="white-space:normal">${esc(short(t.from))}${t.via?" via "+esc(t.via):""} to ${esc(short(t.to))}</td></tr>
     <tr><td>Car</td><td>${esc(t.car)}</td></tr><tr><td>Date</td><td>${ds(t)}</td></tr>
     <tr><td>Distance</td><td>${t.miles.toFixed(1)} road miles${t.ret?(t.ign?", return straight back":", return"):", one way"}</td></tr>
@@ -410,7 +413,8 @@ function renderTrips(){
     <tr><td>Petrol car</td><td class="p">${gbp(t.petrol)}</td></tr>
     <tr><td>Saved vs petrol</td><td class="g">${gbp(t.petrol-t.c1)} cheap, ${gbp(t.petrol-t.c2)} normal</td></tr>
     ${t.legTxt?`<tr><td>Stops (outward)</td><td style="white-space:normal">${esc(t.legTxt).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
-    <div class="row" style="margin-top:10px">${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load this route</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
+    <div class="row" style="margin-top:10px"><button class="btn alt sm" id="favtrip" type="button">${t.fav?"★ Remove from favourites":"☆ Add to favourites"}</button>${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load this route</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
+   $("favtrip").onclick=()=>{t.fav=!t.fav;save();renderTrips()};
    $("deltrip").onclick=()=>{S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips()};
    if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p,n:q.n||""}));R().ret=!!t.ret;R().ign=!!t.ign;save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();schedule(100);window.scrollTo({top:0,behavior:"smooth"})};
   };
