@@ -126,8 +126,9 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
      <span id="ok" class="note"></span>
     </div>
    </div>
-   <div class="card"><h2>Recent journeys</h2><div class="sum" id="sumbox"></div><div id="triplist" style="margin-top:8px"></div>
-    <div class="row" style="margin-top:10px"><button class="btn warn sm" id="clear" type="button">Clear all journeys</button></div></div>
+   <details class="card" id="tripsbox"><summary id="tripsum">Recent journeys</summary>
+    <div style="margin-top:12px"><div class="sum" id="sumbox"></div><div id="triplist" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px"><button class="btn warn sm" id="clear" type="button">Clear all journeys</button></div></div></details>
   </div>
  </div>
 
@@ -337,7 +338,7 @@ function calc(){
  }else $("legres").innerHTML="";
  const sup=S.suppliers.find(x=>x.id===S.sel.sup);
  last={date:new Date().toISOString(),from:label(P[0]),to:label(P[n-1]),via:P.slice(1,-1).map(label).filter(Boolean).join(", "),legTxt,
-  ret,ign,miles,car:car.name,sup:sup?sup.name:"",season:sel,kwh:r.kwh,c1:r.c1,c2:r.c2,petrol,cheapP:num("cheap"),normP:num("norm")};
+  pts:P.map(q=>({h:q.h,p:q.p})),ret,ign,miles,car:car.name,sup:sup?sup.name:"",season:sel,kwh:r.kwh,c1:r.c1,c2:r.c2,petrol,cheapP:num("cheap"),normP:num("norm")};
 }
 function textOut(){
  const l=last;return `${l.car}\n${l.from}${l.via?" via "+l.via:""} to ${l.to}\n${l.miles.toFixed(1)} road miles (${l.ret?(l.ign?"return, straight back":"return"):"one way"}), ${l.season==="sum"?"summer":l.season==="win"?"winter":"normal"} efficiency\n${l.sup}\nEnergy ${l.kwh.toFixed(1)} kWh\nCheap rate (${l.cheapP}p): ${gbp(l.c1)}\nNormal rate (${l.normP}p): ${gbp(l.c2)}\nPetrol car: ${gbp(l.petrol)}${l.legTxt?"\n(outward) "+l.legTxt.replace(/\n/g,"\n(outward) "):""}`;
@@ -376,8 +377,27 @@ function renderTrips(){
  const mi=sum(t=>t.miles),c1=sum(t=>t.c1),c2=sum(t=>t.c2),p=sum(t=>t.petrol);
  $("sumbox").innerHTML=[["Journeys",T.length],["Miles",mi.toFixed(0)],["EV, cheap",gbp(c1)],["EV, normal",gbp(c2)],["Petrol",gbp(p)],["Saved vs petrol",gbp(p-c1)]]
   .map(([a,b])=>`<div><small>${a}</small><span class="big">${b}</span></div>`).join("");
- $("triplist").innerHTML=T.length?T.slice(0,8).map(t=>`<div class="trip"><div><b>${esc(t.from)}${t.via?" via "+esc(t.via):""} to ${esc(t.to)}</b><br><small style="color:var(--mute)">${new Date(t.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})} · ${t.miles.toFixed(1)} mi${t.ret?" return":""} · ${esc(t.car)}</small><br>Cheap ${gbp(t.c1)} · Normal ${gbp(t.c2)} · Petrol ${gbp(t.petrol)}</div><button class="btn warn sm" data-del="${t.id}" type="button">Delete</button></div>`).join("")+(T.length>8?`<p class="note">Showing the latest 8 of ${T.length}. Totals above include all.</p>`:""):`<p class="note">No journeys saved yet. Press Save journey to keep one here.</p>`;
- $("triplist").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{S.trips=S.trips.filter(t=>t.id!==b.dataset.del);save();renderTrips()});
+ $("tripsum").textContent=T.length?`Recent journeys (${T.length}): latest ${(T[0].from||"?")} to ${(T[0].to||"?")}, ${T[0].miles.toFixed(0)} mi`:"Recent journeys (none yet)";
+ const ds=t=>new Date(t.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+ const short=s=>String(s||"").trim()||"?";
+ $("triplist").innerHTML=T.length?`<label for="tripsel">Pick a journey (${T.length} saved)</label><select id="tripsel">${T.map(t=>`<option value="${t.id}">${esc(short(t.from))} to ${esc(short(t.to))} · ${esc(t.car)}</option>`).join("")}</select><div id="tripdet" style="margin-top:10px"></div>`:`<p class="note">No journeys saved yet. Press Save journey to keep one here.</p>`;
+ if(T.length){
+  const show=()=>{const t=T.find(x=>x.id===$("tripsel").value);if(!t)return;
+   $("tripdet").innerHTML=`<table><tr><td>Route</td><td style="white-space:normal">${esc(short(t.from))}${t.via?" via "+esc(t.via):""} to ${esc(short(t.to))}</td></tr>
+    <tr><td>Car</td><td>${esc(t.car)}</td></tr><tr><td>Date</td><td>${ds(t)}</td></tr>
+    <tr><td>Distance</td><td>${t.miles.toFixed(1)} road miles${t.ret?(t.ign?", return straight back":", return"):", one way"}</td></tr>
+    <tr><td>Season</td><td>${t.season==="sum"?"Summer":t.season==="win"?"Winter":"Normal"} efficiency, ${(+t.kwh||0).toFixed(1)} kWh used</td></tr>
+    <tr><td>Tariff</td><td style="white-space:normal">${esc(t.sup||"")}${t.cheapP!=null?` (cheap ${t.cheapP}p, normal ${t.normP}p per kWh)`:""}</td></tr>
+    <tr><td>EV, cheap rate</td><td class="g">${gbp(t.c1)}</td></tr><tr><td>EV, normal rate</td><td class="g">${gbp(t.c2)}</td></tr>
+    <tr><td>Petrol car</td><td class="p">${gbp(t.petrol)}</td></tr>
+    <tr><td>Saved vs petrol</td><td class="g">${gbp(t.petrol-t.c1)} cheap, ${gbp(t.petrol-t.c2)} normal</td></tr>
+    ${t.legTxt?`<tr><td>Stops (outward)</td><td style="white-space:normal">${esc(t.legTxt).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
+    <div class="row" style="margin-top:10px">${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load this route</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
+   $("deltrip").onclick=()=>{S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips()};
+   if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p}));R().ret=!!t.ret;R().ign=!!t.ign;save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();schedule(100);window.scrollTo({top:0,behavior:"smooth"})};
+  };
+  $("tripsel").onchange=show;show();
+ }
 }
 let clearArm=false;
 $("clear").onclick=()=>{if(!clearArm){clearArm=true;$("clear").textContent="Press again to delete all";setTimeout(()=>{clearArm=false;$("clear").textContent="Clear all journeys"},4000);return}
