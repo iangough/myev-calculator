@@ -10,11 +10,11 @@
  --head:'Space Grotesk','Segoe UI',Arial,sans-serif; --body:'Inter','Segoe UI',Arial,sans-serif; color-scheme:dark;
 }
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
- --bg:#e6eefb; --card:#ffffff; --fg:#10233f; --mute:#566a85; --line:#c5d4ec;
- --accent:#1a5fd0; --accent-fg:#ffffff; --good:#0a7a3b; --warn:#9a5b00; --petrol:#a1311f; --hl:#e0ebfd; color-scheme:light}}
+ --bg:#cfe0fa; --card:#f2f7ff; --fg:#0c2040; --mute:#4a6286; --line:#a9c2ea;
+ --accent:#1450c0; --accent-fg:#ffffff; --good:#0a7a3b; --warn:#9a5b00; --petrol:#a1311f; --hl:#e0ebfd; color-scheme:light}}
 :root[data-theme="light"]{
- --bg:#e6eefb; --card:#ffffff; --fg:#10233f; --mute:#566a85; --line:#c5d4ec;
- --accent:#1a5fd0; --accent-fg:#ffffff; --good:#0a7a3b; --warn:#9a5b00; --petrol:#a1311f; --hl:#e0ebfd; color-scheme:light}
+ --bg:#cfe0fa; --card:#f2f7ff; --fg:#0c2040; --mute:#4a6286; --line:#a9c2ea;
+ --accent:#1450c0; --accent-fg:#ffffff; --good:#0a7a3b; --warn:#9a5b00; --petrol:#a1311f; --hl:#e0ebfd; color-scheme:light}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;
  padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 [hidden]{display:none!important}
@@ -72,7 +72,8 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
 </style>
 
 <div class="page">
- <h1>MyEV Calculator</h1>
+ <div class="row" style="justify-content:space-between"><h1>MyEV Calculator</h1>
+  <label class="chk" for="theme" style="text-transform:none">Theme <select id="theme" style="width:auto"><option value="auto">Auto (system)</option><option value="dark">Dark blue</option><option value="light">Light blue</option></select></label></div>
  <div class="cols">
   <div class="col">
    <div class="card">
@@ -181,6 +182,10 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
 (function(){
 const $=id=>document.getElementById(id);
 const KEY="myev-v2";
+function applyTheme(v){const r=document.documentElement;if(v==="dark"||v==="light")r.setAttribute("data-theme",v);else r.removeAttribute("data-theme")}
+let tv="auto";try{tv=localStorage.getItem("myev-theme")||"auto"}catch(e){}
+applyTheme(tv);document.getElementById("theme").value=tv;
+document.getElementById("theme").onchange=()=>{tv=document.getElementById("theme").value;try{localStorage.setItem("myev-theme",tv)}catch(e){}applyTheme(tv)};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const gbp=v=>"£"+v.toFixed(2);
