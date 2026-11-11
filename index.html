@@ -142,6 +142,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div class="row"><input id="newcar" placeholder="Start typing, e.g. Kia EV6" style="flex:1;min-width:180px"><datalist id="carnames"></datalist><button class="btn alt" id="addcar" type="button">Add car</button></div>
       <p class="msg" id="carmsg"></p>
       <p class="note">Pick a car from the list (about 700 electric cars, with model year) and it fills in estimated real-world miles per kWh. If your car is not listed, add it as typed and enter your own figures. Car data: Open EV Data (open-ev-data), licence CDLA-Permissive-2.0.</p></div></div>
+    <div class="card"><h2>Saved places</h2><div id="placelist"></div><p class="note">Places you saved with a nickname. They appear in the Saved place drop-down on each route point.</p></div>
     <div class="card"><h2>Home and fuel</h2>
      <div class="grid">
       <div><label for="hpc">Home postcode</label><input id="hpc" autocapitalize="characters"></div>
@@ -375,7 +376,12 @@ $("ppl").addEventListener("change",()=>{S.fuel.ppl=num("ppl");save();loadSet()})
 $("mpg").addEventListener("change",()=>{S.fuel.mpg=num("mpg");save();loadSet()});
 
 /* ---------- save / copy ---------- */
-function updatePlaces(){$("places").innerHTML=Object.values(S.places).map(p=>`<option value="${esc(p.n)}"></option>`).join("")}
+function renderPlaces(){
+ const L=Object.entries(S.places);
+ $("placelist").innerHTML=L.length?L.map(([k,p])=>`<div class="trip"><div><b>${esc(p.n)}</b><br><small style="color:var(--mute)">${esc((p.h?p.h+" ":"")+p.p)}</small></div><button class="btn warn sm" data-delplace="${esc(k)}" type="button">Delete</button></div>`).join(""):`<p class="note">No saved places yet.</p>`;
+ $("placelist").querySelectorAll("[data-delplace]").forEach(b=>b.onclick=()=>{delete S.places[b.dataset.delplace];save();updatePlaces();renderPts()});
+}
+function updatePlaces(){renderPlaces();$("places").innerHTML=Object.values(S.places).map(p=>`<option value="${esc(p.n)}"></option>`).join("")}
 function rememberPlaces(){R().pts.forEach(q=>{if(q.n&&q.n.trim()&&q.p.trim()&&validPc(q))S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p}});updatePlaces()}
 $("save").onclick=()=>{calc();if(!last)return;rememberPlaces();S.trips.unshift(Object.assign({id:uid()},last));S.trips=S.trips.slice(0,500);save();renderTrips();$("ok").textContent="Saved";setTimeout(()=>$("ok").textContent="",2000)};
 $("copy").onclick=()=>{calc();const t=textOut();
