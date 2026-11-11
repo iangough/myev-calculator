@@ -123,7 +123,17 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <div class="row" style="margin-top:10px">
      <button class="btn" id="save" type="button">Save journey</button>
      <button class="btn alt" id="copy" type="button">Copy for WhatsApp</button>
+     <button class="btn alt" id="shareb" type="button">Share route</button>
      <span id="ok" class="note"></span>
+    </div>
+    <div id="sharebox" hidden style="margin-top:10px">
+     <div class="row">
+      <a class="btn alt sm" id="sh_wa" target="_blank" rel="noopener" href="#">WhatsApp</a>
+      <a class="btn alt sm" id="sh_mail" target="_blank" rel="noopener" href="#">Email</a>
+      <button class="btn alt sm" id="sh_native" type="button" hidden>Other apps...</button>
+      <button class="btn alt sm" id="sh_copy" type="button">Copy link</button>
+     </div>
+     <p class="note">The message has the route, its nicknames, the cost and a link. When the other person opens the link, the same route loads on their device with your nicknames.</p>
     </div>
    </div>
    <details class="card" id="tripsbox"><summary id="tripsum">Recent journeys</summary>
@@ -350,6 +360,7 @@ function calc(){
  const sup=S.suppliers.find(x=>x.id===S.sel.sup);
  last={date:new Date().toISOString(),from:label(P[0]),to:label(P[n-1]),via:P.slice(1,-1).map(label).filter(Boolean).join(", "),legTxt,
   pts:P.map(q=>({h:q.h,p:q.p,n:q.n||""})),ret,ign,miles,car:car.name,sup:sup?sup.name:"",season:sel,kwh:r.kwh,c1:r.c1,c2:r.c2,petrol,cheapP:num("cheap"),normP:num("norm")};
+ updateShare();
 }
 function textOut(){
  const l=last;return `${l.car}\n${l.from}${l.via?" via "+l.via:""} to ${l.to}\n${l.miles.toFixed(1)} road miles (${l.ret?(l.ign?"return, straight back":"return"):"one way"}), ${l.season==="sum"?"summer":l.season==="win"?"winter":"normal"} efficiency\n${l.sup}\nEnergy ${l.kwh.toFixed(1)} kWh\nCheap rate (${l.cheapP}p): ${gbp(l.c1)}\nNormal rate (${l.normP}p): ${gbp(l.c2)}\nPetrol car: ${gbp(l.petrol)}${l.legTxt?"\n(outward) "+l.legTxt.replace(/\n/g,"\n(outward) "):""}`;
@@ -375,6 +386,30 @@ $("sup").onchange=()=>{S.sel.sup=$("sup").value;save();loadSupplier();calc()};
 $("ppl").addEventListener("change",()=>{S.fuel.ppl=num("ppl");save();loadSet()});
 $("mpg").addEventListener("change",()=>{S.fuel.mpg=num("mpg");save();loadSet()});
 
+/* ---------- sharing: the route travels inside the link, nothing is stored online ---------- */
+const SHARE_BASE="https://iangough.github.io/myev-calculator/";
+function enc(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function dec(t){t=t.replace(/-/g,"+").replace(/_/g,"/");while(t.length%4)t+="=";return JSON.parse(decodeURIComponent(escape(atob(t))))}
+function shareLink(){return SHARE_BASE+"#route="+enc({v:1,pts:R().pts.map(q=>({h:q.h,p:q.p,n:q.n||""})),ret:!!R().ret,ign:!!R().ign})}
+function shareText(){const l=last;if(!l)return "";return `${textOut()}
+
+Open this route in the MyEV Calculator: ${shareLink()}`}
+function updateShare(){if(!$("sharebox")||$("sharebox").hidden||!last)return;const t=shareText();
+ $("sh_wa").href="https://wa.me/?text="+encodeURIComponent(t);
+ $("sh_mail").href="mailto:?subject="+encodeURIComponent("Route: "+last.from+" to "+last.to)+"&body="+encodeURIComponent(t)}
+$("shareb").onclick=()=>{$("sharebox").hidden=!$("sharebox").hidden;calc();$("sh_native").hidden=!navigator.share;updateShare()};
+$("sh_native").onclick=()=>{calc();try{navigator.share({title:"MyEV route",text:textOut(),url:shareLink()}).catch(()=>{})}catch(e){}};
+$("sh_copy").onclick=()=>{calc();const t=shareText();const ok=()=>{$("ok").textContent="Link copied";setTimeout(()=>$("ok").textContent="",2000)};
+ try{navigator.clipboard.writeText(t).then(ok,()=>{$("ok").textContent="Copy blocked here"})}catch(e){$("ok").textContent="Copy blocked here"}};
+function loadShared(){
+ const h=location.hash||"";if(h.indexOf("#route=")!==0)return false;
+ try{const o=dec(h.slice(7));if(!o||!Array.isArray(o.pts)||o.pts.length<2||o.pts.length>4)return false;
+  R().pts=o.pts.map(q=>({h:String(q.h||"").slice(0,60),p:String(q.p||"").toUpperCase().slice(0,10),n:String(q.n||"").slice(0,40)}));
+  R().ret=!!o.ret;R().ign=!!o.ign;
+  R().pts.forEach(q=>{if(q.n.trim()&&validPc(q)&&!S.places[q.n.trim().toLowerCase()])S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p}});
+  save();try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
+  return true}catch(e){return false}
+}
 /* ---------- save / copy ---------- */
 function renderPlaces(){
  const L=Object.entries(S.places);
@@ -483,7 +518,9 @@ function init(){updatePlaces();
  $("ret").checked=R().ret!==false;$("ign").checked=!!R().ign;
  fillSelects();loadCar();loadSupplier();loadFuel();loadSet();renderCars();renderSups();renderTrips();renderPts();refreshLegs();schedule(400);
 }
+const gotShared=loadShared();
 init();
+if(gotShared)$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";
 })();
 </script>
 
