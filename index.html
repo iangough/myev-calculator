@@ -77,7 +77,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
   <div class="col">
    <div class="card">
     <h2>Route</h2>
-    <div id="pts"></div>
+    <div id="pts"></div><datalist id="places"></datalist>
     <div class="row">
      <button class="btn alt" id="addstop" type="button">Add a stop</button>
      <button class="btn alt" id="recalc" type="button">Recalculate miles</button>
@@ -215,12 +215,15 @@ S.cars.forEach(c=>{if(!c.src)c.src="mine"});
 D.suppliers.forEach(c=>{if(!S.suppliers.find(x=>x.id===c.id))S.suppliers.push(c)});
 if(!S.route.pts||S.route.pts.length<2)S.route.pts=[{h:"",p:""},{h:"",p:""}];
 if(!S.route.cache)S.route.cache={};
+if(!S.places)S.places={};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- route ---------- */
 const R=()=>S.route;
-const nm=(i,n)=>i===0?"From":i===n-1?"To":"Stop "+i;
-const label=q=>(q.h+" "+q.p).trim();
+const role=(i,n)=>i===0?"From":i===n-1?"To":"Stop "+i;
+const nm=(i,n)=>(R().pts[i]&&R().pts[i].n&&R().pts[i].n.trim())||role(i,n);
+const addr=q=>(q.h+" "+q.p).trim();
+const label=q=>(q.n&&q.n.trim())?(q.n.trim()+" ("+(q.p.trim()||q.h.trim()||"?")+")"):addr(q);
 const pcKey=q=>q.p.replace(/\s+/g,"").toUpperCase()+"/"+q.h.trim().toLowerCase();
 const pairKey=(a,b)=>{const x=pcKey(a),y=pcKey(b);return x<y?x+"|"+y:y+"|"+x};
 const validPc=q=>/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/.test(q.p.trim());
@@ -230,16 +233,23 @@ const directMiles=()=>{const P=R().pts;return P.length>2?(R().cache[pairKey(P[0]
 
 function renderPts(){
  const P=R().pts,n=P.length;
+ const placeOpts=Object.values(S.places).map(p=>`<option value="${esc(p.n.toLowerCase())}">${esc(p.n)} (${esc(p.p)})</option>`).join("");
  $("pts").innerHTML=P.map((q,i)=>{
   const meta=i===0?`<div class="meta">Starting point</div>`:`<div class="meta">Road miles from ${esc(nm(i-1,n))}: <input data-leg="${i-1}" type="number" step="0.1" min="0" value="${legMiles()[i-1]||""}" aria-label="Road miles from previous point"> mi</div>`;
-  return `<div class="pt" data-i="${i}"><div class="pthead"><span class="badge">${nm(i,n)}</span>
+  return `<div class="pt" data-i="${i}"><div class="pthead"><span class="badge">${role(i,n)}</span>
    <span class="ptbtns"><button class="btn alt sm" data-up="${i}" type="button" ${i===0?"disabled":""} aria-label="Move up">&#9650; Up</button>
    <button class="btn alt sm" data-dn="${i}" type="button" ${i===n-1?"disabled":""} aria-label="Move down">&#9660; Down</button>
    ${n>2?`<button class="btn warn sm" data-rm="${i}" type="button" aria-label="Remove">Remove</button>`:""}</span></div>
-   <div class="grid"><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="optional"></div>
-   <div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="e.g. SW1A 1AA" autocapitalize="characters"></div></div>${meta}</div>`}).join("");
+   <div class="grid"><div class="full"><label>Saved place</label><select data-pick="${i}"><option value="">${placeOpts?"Pick a saved place...":"No saved places yet"}</option>${placeOpts}</select></div><div class="full"><label>Nickname (optional)</label><input data-i="${i}" data-f="n" list="places" value="${esc(q.n||"")}" placeholder="e.g. Emma's house"></div><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="optional"></div>
+   <div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="e.g. SW1A 1AA" autocapitalize="characters"></div><div class="full"><button class="btn alt sm" data-sp="${i}" type="button">Save this place for next time</button> <span class="note" data-spmsg="${i}"></span></div></div>${meta}</div>`}).join("");
  $("pts").querySelectorAll("input[data-f]").forEach(el=>el.addEventListener("input",()=>{R().pts[+el.dataset.i][el.dataset.f]=el.dataset.f==="p"?el.value.toUpperCase():el.value;save();refreshLegs();schedule(900)}));
+ $("pts").querySelectorAll('input[data-f="n"]').forEach(el=>el.addEventListener("change",()=>{const q=R().pts[+el.dataset.i],pl=(S.places||{})[(q.n||"").trim().toLowerCase()];if(pl){q.h=pl.h;q.p=pl.p;save();renderPts();refreshLegs();schedule(100)}}));
  $("pts").querySelectorAll("input[data-leg]").forEach(el=>el.addEventListener("input",()=>{const i=+el.dataset.leg;R().cache[pairKey(R().pts[i],R().pts[i+1])]=parseFloat(el.value)||0;save();calc()}));
+ $("pts").querySelectorAll("select[data-pick]").forEach(el=>el.addEventListener("change",()=>{const pl=S.places[el.value];if(!pl)return;const q=R().pts[+el.dataset.pick];q.n=pl.n;q.h=pl.h;q.p=pl.p;save();renderPts();refreshLegs();schedule(100)}));
+ $("pts").querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{const i=+b.dataset.sp,q=R().pts[i],m=$("pts").querySelector(`[data-spmsg="${i}"]`);
+  if(!(q.n&&q.n.trim())){m.textContent="Give it a nickname first.";return}
+  if(!validPc(q)){m.textContent="Enter a full postcode first.";return}
+  S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p};save();updatePlaces();renderPts()});
  $("pts").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
  $("pts").querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
  $("pts").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{R().pts.splice(+b.dataset.rm,1);save();renderPts();calc();schedule(100)});
@@ -251,7 +261,7 @@ function refreshLegs(){ /* update the small mile boxes without rebuilding the ro
  const d=directMiles();if(document.activeElement!==$("direct"))$("direct").value=d||"";calc();
 }
 function move(i,d){const P=R().pts,j=i+d;if(j<0||j>=P.length)return;[P[i],P[j]]=[P[j],P[i]];save();renderPts();refreshLegs();schedule(100)}
-$("addstop").onclick=()=>{const P=R().pts;if(P.length>=4)return;P.splice(P.length-1,0,{h:"",p:""});save();renderPts();calc()};
+$("addstop").onclick=()=>{const P=R().pts;if(P.length>=4)return;P.splice(P.length-1,0,{h:"",p:"",n:""});save();renderPts();calc()};
 $("ret").onchange=()=>{R().ret=$("ret").checked;save();renderPts();refreshLegs();schedule(100)};
 $("ign").onchange=()=>{R().ign=$("ign").checked;save();renderPts();refreshLegs();schedule(100)};
 $("direct").addEventListener("input",()=>{const P=R().pts;R().cache[pairKey(P[0],P[P.length-1])]=parseFloat($("direct").value)||0;save();calc()});
@@ -271,7 +281,7 @@ async function geocode(q){
  gcache[k]=g;return g;
 }
 function mapsLink(){
- const P=R().pts.map(q=>encodeURIComponent(label(q))),mid=P.slice(1,-1).join("%7C");
+ const P=R().pts.map(q=>encodeURIComponent(addr(q))),mid=P.slice(1,-1).join("%7C");
  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${P[0]}&destination=${P[P.length-1]}${mid?"&waypoints="+mid:""}`;
 }
 function schedule(ms){clearTimeout(timer);timer=setTimeout(()=>ensureRoute(false),ms)}
@@ -338,7 +348,7 @@ function calc(){
  }else $("legres").innerHTML="";
  const sup=S.suppliers.find(x=>x.id===S.sel.sup);
  last={date:new Date().toISOString(),from:label(P[0]),to:label(P[n-1]),via:P.slice(1,-1).map(label).filter(Boolean).join(", "),legTxt,
-  pts:P.map(q=>({h:q.h,p:q.p})),ret,ign,miles,car:car.name,sup:sup?sup.name:"",season:sel,kwh:r.kwh,c1:r.c1,c2:r.c2,petrol,cheapP:num("cheap"),normP:num("norm")};
+  pts:P.map(q=>({h:q.h,p:q.p,n:q.n||""})),ret,ign,miles,car:car.name,sup:sup?sup.name:"",season:sel,kwh:r.kwh,c1:r.c1,c2:r.c2,petrol,cheapP:num("cheap"),normP:num("norm")};
 }
 function textOut(){
  const l=last;return `${l.car}\n${l.from}${l.via?" via "+l.via:""} to ${l.to}\n${l.miles.toFixed(1)} road miles (${l.ret?(l.ign?"return, straight back":"return"):"one way"}), ${l.season==="sum"?"summer":l.season==="win"?"winter":"normal"} efficiency\n${l.sup}\nEnergy ${l.kwh.toFixed(1)} kWh\nCheap rate (${l.cheapP}p): ${gbp(l.c1)}\nNormal rate (${l.normP}p): ${gbp(l.c2)}\nPetrol car: ${gbp(l.petrol)}${l.legTxt?"\n(outward) "+l.legTxt.replace(/\n/g,"\n(outward) "):""}`;
@@ -365,7 +375,9 @@ $("ppl").addEventListener("change",()=>{S.fuel.ppl=num("ppl");save();loadSet()})
 $("mpg").addEventListener("change",()=>{S.fuel.mpg=num("mpg");save();loadSet()});
 
 /* ---------- save / copy ---------- */
-$("save").onclick=()=>{calc();if(!last)return;S.trips.unshift(Object.assign({id:uid()},last));S.trips=S.trips.slice(0,500);save();renderTrips();$("ok").textContent="Saved";setTimeout(()=>$("ok").textContent="",2000)};
+function updatePlaces(){$("places").innerHTML=Object.values(S.places).map(p=>`<option value="${esc(p.n)}"></option>`).join("")}
+function rememberPlaces(){R().pts.forEach(q=>{if(q.n&&q.n.trim()&&q.p.trim()&&validPc(q))S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p}});updatePlaces()}
+$("save").onclick=()=>{calc();if(!last)return;rememberPlaces();S.trips.unshift(Object.assign({id:uid()},last));S.trips=S.trips.slice(0,500);save();renderTrips();$("ok").textContent="Saved";setTimeout(()=>$("ok").textContent="",2000)};
 $("copy").onclick=()=>{calc();const t=textOut();
  const done=()=>{$("ok").textContent="Copied";setTimeout(()=>$("ok").textContent="",2000)};
  const fail=()=>{$("ok").textContent="Copy blocked here"};
@@ -394,7 +406,7 @@ function renderTrips(){
     ${t.legTxt?`<tr><td>Stops (outward)</td><td style="white-space:normal">${esc(t.legTxt).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
     <div class="row" style="margin-top:10px">${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load this route</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
    $("deltrip").onclick=()=>{S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips()};
-   if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p}));R().ret=!!t.ret;R().ign=!!t.ign;save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();schedule(100);window.scrollTo({top:0,behavior:"smooth"})};
+   if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p,n:q.n||""}));R().ret=!!t.ret;R().ign=!!t.ign;save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();schedule(100);window.scrollTo({top:0,behavior:"smooth"})};
   };
   $("tripsel").onchange=show;show();
  }
@@ -457,7 +469,7 @@ let rArm=false;
 $("reset").onclick=()=>{if(!rArm){rArm=true;$("reset").textContent="Press again to reset";setTimeout(()=>{rArm=false;$("reset").textContent="Reset tariffs and fuel to defaults"},4000);return}
  const d=DEFAULTS();S.suppliers=d.suppliers;S.fuel=d.fuel;save();rArm=false;$("reset").textContent="Reset tariffs and fuel to defaults";$("resetmsg").textContent="Tariffs and fuel reset. Cars and journeys kept.";init()};
 
-function init(){
+function init(){updatePlaces();
  $("ret").checked=R().ret!==false;$("ign").checked=!!R().ign;
  fillSelects();loadCar();loadSupplier();loadFuel();loadSet();renderCars();renderSups();renderTrips();renderPts();refreshLegs();schedule(400);
 }
