@@ -67,6 +67,11 @@ td.p{color:var(--petrol);font-weight:700}
 @media(max-width:480px){.edit{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .src{font-size:11px;font-weight:600;color:var(--warn)}
 .src.mine{color:var(--good)}
+.netbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:-6px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--good);flex:none}
+.dot.warn{background:var(--warn)}.dot.bad{background:var(--petrol)}
+.big4{font:700 40px var(--head);letter-spacing:.2em;color:var(--accent)}
+.wa{display:inline-block;text-decoration:none}
 a{color:var(--accent)}
 details>summary{cursor:pointer;font:600 17px var(--head)}
 </style>
@@ -74,6 +79,21 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
 <div class="page">
  <div class="row" style="justify-content:space-between"><h1>MyEV Calculator</h1>
   <label class="chk" for="theme" style="text-transform:none">Theme <select id="theme" style="width:auto"><option value="auto">Auto (system)</option><option value="dark">Dark blue</option><option value="light">Light blue</option></select></label></div>
+ <div class="netbar" id="netbar" role="status" aria-live="polite"><span class="dot" id="netdot"></span><span id="nettext">Checking connection...</span><button class="btn alt sm" id="netinfo" type="button">What works offline?</button></div>
+ <div class="card" id="retrybox" hidden>
+  <h2>Are you offline?</h2>
+  <p class="note" style="margin:0 0 8px" id="retrytext">No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.</p>
+  <div class="row"><span class="note">Yes, I am offline. Try again in:</span>
+   <button class="btn alt sm" data-retry="1" type="button">1 minute</button><button class="btn alt sm" data-retry="2" type="button">2 minutes</button><button class="btn alt sm" data-retry="5" type="button">5 minutes</button><button class="btn alt sm" data-retry="10" type="button">10 minutes</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn sm" id="retrynow" type="button">No, I am online: try now</button></div>
+ </div>
+ <div class="card" id="netdetail" hidden>
+  <h2>What works with no connection</h2>
+  <p class="note" style="margin:0"><b>Still works:</b> working out costs from miles you type into the small boxes, changing the car, season, tariff and petrol price, nicknames and saved places, saving, starring and deleting journeys, and looking at your saved journeys. Everything you do is kept on this device.</p>
+  <p class="note"><b>Needs internet:</b> automatic road miles between postcodes, sharing with family (your changes wait on this device and sync once you are back online), and sending a WhatsApp or email. The app must have been opened once online before it can open with no signal.</p>
+  <p class="note"><b>If only the sharing server is down:</b> the internet still works, so road miles and everything else carry on. Only the family sync waits.</p>
+  <p class="note"><b>After 3 minutes with no connection</b> this bar turns red to remind you that live road miles, sharing and tariff updates are unavailable. The calculator itself keeps working.</p>
+ </div>
  <div class="cols">
   <div class="col">
    <div class="card">
@@ -82,7 +102,8 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <div class="row">
      <button class="btn alt" id="addstop" type="button" hidden>Add another stop</button>
      <button class="btn alt" id="recalc" type="button">Recalculate miles</button>
-     <a id="maplink" href="#" target="_blank" rel="noopener">Check in Google Maps</a>
+     <a class="btn sm wa" id="maplink" href="#" target="_blank" rel="noopener">Start in Google Maps</a>
+     <a class="btn alt sm wa" id="maplink2" href="#" target="_blank" rel="noopener" hidden>Start the return in Google Maps</a>
     </div>
     <div class="row" style="margin-top:12px">
      <label class="chk"><input type="checkbox" id="usestops"> Add stops on the way</label>
@@ -144,6 +165,10 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
   </div>
  </div>
 
+ <div class="card"><h2>Share this calculator</h2>
+  <p class="note" style="margin:0 0 8px">Send the link to anyone: it opens on iPhone, Android and any laptop, with nothing to buy and no account.</p>
+  <div class="row"><a class="btn alt sm wa" id="app_wa" target="_blank" rel="noopener" href="#">WhatsApp</a><a class="btn alt sm wa" id="app_mail" target="_blank" rel="noopener" href="#">Email</a><button class="btn alt sm" id="app_native" type="button" hidden>Other apps...</button><button class="btn alt sm" id="app_copy" type="button">Copy link</button><span class="note" id="app_ok"></span></div>
+ </div>
  <details class="card"><summary>Edit cars, tariffs and home</summary>
   <div class="cols" style="margin-top:12px">
    <div class="col">
@@ -154,11 +179,21 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div class="row"><input id="newcar" placeholder="Type the make and model here" style="flex:1;min-width:180px"><datalist id="carnames"></datalist><button class="btn alt" id="addcar" type="button">Add car</button></div>
       <p class="msg" id="carmsg"></p>
       <p class="note">Pick a car from the list (about 700 electric cars, with model year) and it fills in estimated real-world miles per kWh. If your car is not listed, add it as typed and enter your own figures. Car data: Open EV Data (open-ev-data), licence CDLA-Permissive-2.0.</p></div></div>
-    <div class="card"><h2>Share with another person (sync)</h2>
-     <p class="note" style="margin:0 0 8px" id="syncstatus">Not syncing. Create a code, or type the code from the other person.</p>
-     <label for="synccode">Pairing code</label><input id="synccode" placeholder="Type or paste the code here" autocapitalize="characters" autocomplete="off">
-     <div class="row" style="margin-top:8px"><button class="btn alt sm" id="syncnew" type="button">Create a new code</button><button class="btn alt sm" id="syncjoin" type="button">Use this code</button><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn warn sm" id="syncoff" type="button">Stop syncing</button></div>
-     <p class="note">Two people who use the same code see each other's journeys, favourites and saved places, kept up to date automatically. Create a code on one phone, then send it to the other person and have them type it in here. Anyone with the code can see and change the shared list, so only share it with someone you trust. The code itself is never sent anywhere: only a scrambled version of it is.</p></div>
+    <div class="card"><h2>Share journeys with family</h2>
+     <p class="note" style="margin:0 0 8px" id="sharestat">Not sharing.</p>
+     <div id="shareoff">
+      <label for="sharecap">Who do you want to share with?</label>
+      <select id="sharecap"><option value="2">One other person (a pair)</option><option value="3">A small group of 3 people</option><option value="4">A small group of 4 people</option><option value="5">A small group of 5 people</option><option value="6">A small group of 6 people</option><option value="7">A small group of 7 people</option><option value="8">A small group of 8 people</option><option value="9">A small group of 9 people</option><option value="10">A small group of 10 people</option></select>
+      <div class="row" style="margin-top:8px"><button class="btn alt sm" id="sharestart" type="button">Start sharing and get a code</button></div>
+      <label for="joincode" style="margin-top:12px">Or join someone with their 4-digit code</label>
+      <div class="row"><input id="joincode" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="Type the 4 digits here" style="max-width:200px"><button class="btn alt sm" id="sharejoin" type="button">Join</button></div>
+     </div>
+     <div id="shareon" hidden>
+      <div id="invitebox" hidden><div class="big4" id="invitecode"></div><p class="note" style="margin-top:0">Give this code to the person you are adding. It works for <span id="invitesecs"></span> and stops working once your group is full.</p></div>
+      <div class="row"><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn alt sm" id="newinvite" type="button">New code</button><button class="btn warn sm" id="leavegrp" type="button">Leave this group</button><button class="btn warn sm" id="disbandgrp" type="button">End sharing for everyone</button></div>
+     </div>
+     <p class="msg" id="syncstatus"></p>
+     <p class="note">A pair is just you and one other person. Once your group is full, nobody else can join it or see anything. A device can only be in one group. The code lasts 10 minutes and the other person needs it only once. Journeys, favourites and saved places then stay in step on every phone in the group, and the app keeps working without a connection.</p></div>
     <div class="card"><h2>Saved places</h2><div id="placelist"></div><p class="note">Places you saved with a nickname. They appear in the Saved place drop-down on each route point.</p></div>
     <div class="card"><h2>Home and fuel</h2>
      <div class="grid">
@@ -240,7 +275,8 @@ if(!S.route.cache)S.route.cache={};
 if(!S.places)S.places={};
 if(!S.tomb)S.tomb={};
 if(!S.ptomb)S.ptomb={};
-if(!S.sync)S.sync={code:""};
+if(!S.sync)S.sync={};
+S.sync=Object.assign({device:"",token:"",space:"",cap:0,members:0},S.sync);
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- route ---------- */
@@ -295,7 +331,7 @@ $("direct").addEventListener("input",()=>{const P=R().pts;R().cache[pairKey(P[0]
 
 /* automatic road-mile lookup: postcodes.io + OpenStreetMap routing. Works on the laptop copy and on a normal web host. */
 const gcache={};let busy=false,again=false,blocked=false,blockedAt=0,timer=null;
-function tfetch(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||8000);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))}
+function tfetch(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||4000);return fetch(u,{signal:c.signal,cache:"no-store"}).finally(()=>clearTimeout(t))}
 /* postcode (and house) to a point on the map: tries several free services in turn */
 async function geocode(q){
  const k=pcKey(q);if(gcache[k])return gcache[k];
@@ -322,9 +358,43 @@ async function roadMiles(a,b){
  for(const f of tries){try{const v=await f();if(v&&v>0)return v}catch(e){}}
  throw new TypeError("The road routing services could not be reached");
 }
-function mapsLink(){
- const P=R().pts.map(q=>encodeURIComponent(addr(q))),mid=P.slice(1,-1).join("%7C");
- return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${P[0]}&destination=${P[P.length-1]}${mid?"&waypoints="+mid:""}`;
+function gmaps(o,d,mid){const e=encodeURIComponent;return "https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&origin="+e(o)+"&destination="+e(d)+(mid.length?"&waypoints="+mid.map(e).join("%7C"):"")}
+function mapsLink(){const P=R().pts.map(addr);return gmaps(P[0],P[P.length-1],P.slice(1,-1))}
+function mapsLinkReturn(){const P=R().pts.map(addr).reverse();return gmaps(P[0],P[P.length-1],R().ign?[]:P.slice(1,-1))}
+/* ---------- connection awareness ---------- */
+const net={online:navigator.onLine!==false,since:navigator.onLine===false?Date.now():0,fails:0,pausedUntil:0,syncDown:false,syncFails:0,retryTimer:null,pausedTimer:null,lastSync:0};
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new TypeError("timeout")),ms))]);
+async function probe(){try{await tfetch("ping.txt?t="+Date.now(),5000);return true}catch(e){return false}}
+function setOnline(v){
+ if(v&&!net.online){net.online=true;net.since=0;net.fails=0;net.syncFails=0;net.pausedUntil=0;hideRetry();schedule(200);scheduleSync()}
+ else if(!v&&net.online){net.online=false;net.since=Date.now()}
+ renderNet();
+}
+function renderNet(){
+ let cls="",t;
+ if(net.online){t="Online";
+  if(S.sync.space){if(net.syncDown){cls="warn";t="Online · the sharing server is offline: your changes stay on this device and will sync later"}else if(net.lastSync){t+=" · sharing synced "+new Date(net.lastSync).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}}}
+ else{const mins=(Date.now()-net.since)/60000;
+  if(mins<3){cls="warn";t="Offline · using the data saved on this device"}
+  else{cls="bad";t="Offline for over 3 minutes · live road miles, sharing and tariff updates are unavailable. You can still type miles and work out costs."}}
+ $("netdot").className="dot "+cls;$("nettext").textContent=t;
+}
+function showRetry(why){$("retrytext").textContent=why;$("retrybox").hidden=false}
+function hideRetry(){$("retrybox").hidden=true}
+document.querySelectorAll("[data-retry]").forEach(b=>b.onclick=()=>{
+ const m=+b.dataset.retry;net.pausedUntil=Date.now()+m*60000;net.fails=0;net.syncFails=0;hideRetry();setOnline(false);
+ $("findmsg").textContent="Okay. I will try again in "+m+(m===1?" minute":" minutes")+". Type the miles in the small boxes if you know them.";
+ clearTimeout(net.pausedTimer);net.pausedTimer=setTimeout(async()=>{net.pausedUntil=0;const up=await probe();setOnline(up);if(up){ensureRoute(true);scheduleSync()}else{showRetry("Still no connection. Try again in:")}},m*60000)});
+$("retrynow").onclick=async()=>{net.fails=0;net.syncFails=0;net.pausedUntil=0;hideRetry();setOnline(await probe());ensureRoute(true);scheduleSync()};
+$("netinfo").onclick=()=>{$("netdetail").hidden=!$("netdetail").hidden};
+window.addEventListener("offline",()=>setOnline(false));
+window.addEventListener("online",async()=>setOnline(await probe()));
+setInterval(renderNet,15000);
+setInterval(async()=>{if(document.hidden||net.pausedUntil>Date.now())return;setOnline(navigator.onLine!==false&&await probe())},20000);
+function lookupFailed(){
+ net.fails++;
+ if(net.fails<3){$("findmsg").textContent="No answer from the road-mile services (try "+net.fails+" of 3). Trying again in 10 seconds...";clearTimeout(net.retryTimer);net.retryTimer=setTimeout(()=>ensureRoute(true),10000)}
+ else{$("findmsg").textContent="Still no answer. Type the miles in the small boxes if you know them.";showRetry("No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.")}
 }
 function schedule(ms){clearTimeout(timer);timer=setTimeout(()=>ensureRoute(false),ms)}
 async function ensureRoute(force){
@@ -334,18 +404,20 @@ async function ensureRoute(force){
  if(n>2&&R().ign&&R().ret)pairs.push([P[0],P[n-1]]);
  const need=pairs.filter(([a,b])=>validPc(a)&&validPc(b)&&(force||!(pairKey(a,b) in R().cache)));
  if(!need.length)return;
- if(blocked&&!force&&Date.now()-blockedAt<20000)return;
- busy=true;blocked=false;$("findmsg").textContent="Looking up the driving route...";
+ if(!net.online&&!force){$("findmsg").textContent="You are offline, so road miles can't be looked up. Type the miles in the small boxes (they are kept). I will look them up when you are back online.";return}
+ if(net.pausedUntil>Date.now()&&!force)return;
+ busy=true;$("findmsg").textContent="Looking up the driving route...";
  try{
   for(const [a,b] of need){
-   const ga=await geocode(a),gb=await geocode(b);
-   R().cache[pairKey(a,b)]=miles1(await roadMiles(ga,gb));
+   const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);return roadMiles(ga,gb)})(),10000);
+   R().cache[pairKey(a,b)]=miles1(m);
    const keys=Object.keys(R().cache);if(keys.length>300)delete R().cache[keys[0]];
    save();refreshLegs();
   }
+  net.fails=0;hideRetry();
   $("findmsg").textContent="Road miles filled in by the fastest driving route. Postcode centres are used where no house was found, so allow a little either way.";
  }catch(e){
-  if(e&&e.name==="TypeError"){blocked=true;blockedAt=Date.now();$("findmsg").innerHTML=`Automatic road miles are not available on this page (the browser blocks the lookup here). <a href="${mapsLink()}" target="_blank" rel="noopener">Open the route in Google Maps</a> and type the miles into the small boxes.`}
+  if(e&&e.name==="TypeError"){lookupFailed();probe().then(setOnline)}
   else $("findmsg").textContent=(e&&e.message)||"Lookup failed";
  }
  busy=false;if(again){again=false;schedule(300)}
@@ -376,7 +448,7 @@ function calc(){
  $("rtitle").textContent=`${miles.toFixed(1)} road miles${ret?` (${out.toFixed(1)} out + ${back.toFixed(1)} back${ign?", straight back":""})`:" (one way)"}`;
  const r=rows.find(x=>x.k===sel),sn=SEAS.find(x=>x[0]===sel)[1];
  $("saving").textContent=`${sn}: the cheap tariff saves ${gbp(petrol-r.c1)} against petrol, the normal tariff saves ${gbp(petrol-r.c2)}.`;
- $("maplink").href=mapsLink();
+ $("maplink").href=mapsLink();$("maplink2").href=mapsLinkReturn();$("maplink2").hidden=!R().ret;
  const e1=car[sel]||1;let legTxt="";
  if(n>2){
   let g=`<table><tr><th>By leg, ${sn}</th><th>Miles</th><th>Cheap</th><th>Normal</th></tr>`,cm=0,cl=[];
@@ -439,35 +511,77 @@ function loadShared(){
   save();try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
   return true}catch(e){return false}
 }
-/* ---------- sync with one other person (via the Synology service) ---------- */
+/* ---------- sharing in small groups (via the Synology service) ---------- */
 const SYNC_URL="https://myev.cloudgough.synology.me:8443";
-let syncing=false,syncTimer=null;
-const normCode=c=>String(c||"").replace(/[\s-]/g,"").toUpperCase();
-async function sha256hex(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
-function newCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",r=new Uint8Array(20);crypto.getRandomValues(r);const c=Array.from(r).map(x=>A[x%32]);return[0,5,10,15].map(i=>c.slice(i,i+5).join("")).join("-")}
-function syncStatus(t){$("syncstatus").textContent=t}
-function scheduleSync(){if(!normCode(S.sync.code))return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),1500)}
-async function syncNow(manual){
- const code=normCode(S.sync.code);if(!code){if(manual)syncStatus("Create or enter a pairing code first.");return}
- if(syncing)return;syncing=true;syncStatus("Syncing...");
- try{
-  const space=await sha256hex("myev:"+code);
-  const res=await fetch(SYNC_URL+"/v1/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({space,trips:S.trips,places:S.places,tomb:S.tomb,ptomb:S.ptomb})});
-  if(!res.ok)throw new Error("server said "+res.status);
-  const j=await res.json();
-  S.trips=Array.isArray(j.trips)?j.trips:S.trips;S.places=j.places&&typeof j.places==="object"?j.places:S.places;S.tomb=j.tomb||S.tomb;S.ptomb=j.ptomb||S.ptomb;
-  save();renderTrips();updatePlaces();renderPts();
-  syncStatus("Synced "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". "+S.trips.length+" journeys, "+Object.keys(S.places).length+" saved places shared.");
- }catch(e){syncStatus("Could not reach the sync service just now. Your journeys are safe on this device and will sync when it is reachable.")}
- syncing=false;
+let syncing=false,syncTimer=null,inviteExp=0;
+function rid(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return Array.from(a).map(x=>x.toString(16).padStart(2,"0")).join("")}
+function ensureDevice(){if(!S.sync.device||!S.sync.token){S.sync.device=rid(16);S.sync.token=rid(32);save()}}
+async function api(path,extra){
+ ensureDevice();const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
+ try{const res=await fetch(SYNC_URL+path,{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",signal:c.signal,body:JSON.stringify(Object.assign({device:S.sync.device,token:S.sync.token},extra||{}))});
+  let j={};try{j=await res.json()}catch(e){}return{ok:res.ok,status:res.status,data:j}}
+ finally{clearTimeout(t)}
 }
-$("synccode").value=S.sync.code||"";
-$("syncnew").onclick=()=>{S.sync.code=newCode();$("synccode").value=S.sync.code;save();syncNow(true)};
-$("syncjoin").onclick=()=>{const c=normCode($("synccode").value);if(c.length<16){syncStatus("That code is too short. Paste the full code the other person sent.");return}S.sync.code=$("synccode").value.trim().toUpperCase();save();syncNow(true)};
+const ERR={already_sharing:"This device is already in a sharing group. Leave it first if you want to start or join another.",bad_code:"That code is not right, or it has run out (codes last 10 minutes). Ask for a new code.",group_full:"That group is already full, so nobody else can join it.",too_many_tries:"Too many wrong codes. Please wait an hour before trying again.",not_a_member:"This device is no longer part of the group.",slow_down:"Please wait a moment and try again.",full:"The sharing service is full at the moment.",bad_size:"Choose a group size between 2 and 10."};
+function syncMsg(t){$("syncstatus").textContent=t}
+function applyGroup(g){if(!g)return;S.sync.cap=g.cap;S.sync.members=g.members;if(g.invite){inviteExp=Date.now()+g.inviteSeconds*1000;$("invitecode").textContent=g.invite}else{inviteExp=0}save();renderShare()}
+function renderShare(){
+ const on=!!S.sync.space;$("shareoff").hidden=on;$("shareon").hidden=!on;
+ $("sharestat").textContent=on?(S.sync.members>=S.sync.cap?"Sharing with "+(S.sync.members-1)+" other "+(S.sync.members-1===1?"person":"people")+". Your group is full ("+S.sync.members+" of "+S.sync.cap+"), so nobody else can join.":"Sharing: "+S.sync.members+" of "+S.sync.cap+" places filled. "+(S.sync.cap-S.sync.members)+" more can join."):"Not sharing. Start a group, or join one with a code.";
+ const open=on&&inviteExp>Date.now()&&S.sync.members<S.sync.cap;$("invitebox").hidden=!open;$("newinvite").hidden=!(on&&S.sync.members<S.sync.cap);
+ if(open){const sec=Math.max(0,Math.round((inviteExp-Date.now())/1000));$("invitesecs").textContent=Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0")+" more minutes"}
+}
+setInterval(()=>{if(inviteExp)renderShare()},1000);
+function scheduleSync(){if(!S.sync.space)return;if(net.pausedUntil>Date.now())return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),1500)}
+async function syncNow(manual){
+ if(!S.sync.space){if(manual)syncMsg("You are not sharing yet.");return}
+ if(!net.online){syncMsg("You are offline. Your changes are kept on this device and will sync when you are back online.");return}
+ if(syncing)return;syncing=true;syncMsg("Syncing...");
+ try{
+  const r=await api("/v1/sync",{space:S.sync.space,trips:S.trips,places:S.places,tomb:S.tomb,ptomb:S.ptomb});
+  if(r.status===403){S.sync.space="";S.sync.cap=0;S.sync.members=0;save();renderShare();syncMsg(ERR.not_a_member+" Your journeys are still on this device.");syncing=false;return}
+  if(!r.ok)throw new Error("server "+r.status);
+  const j=r.data;S.trips=Array.isArray(j.trips)?j.trips:S.trips;S.places=j.places&&typeof j.places==="object"?j.places:S.places;S.tomb=j.tomb||S.tomb;S.ptomb=j.ptomb||S.ptomb;
+  net.syncDown=false;net.syncFails=0;net.lastSync=Date.now();hideRetry();
+  save();renderTrips();updatePlaces();renderPts();applyGroup(j.group);
+  syncMsg("Synced "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". "+S.trips.length+" journeys and "+Object.keys(S.places).length+" saved places shared.");
+ }catch(e){
+  net.syncFails++;const up=await probe();
+  if(up){net.syncDown=true;syncMsg("The sharing server is offline right now. Everything else works, and your changes will sync later.")}
+  else{net.syncDown=false;setOnline(false);syncMsg("No connection. Your changes are kept on this device and will sync when you are back online.")}
+  if(net.syncFails<3&&up){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),10000)}
+  else if(net.syncFails>=3){showRetry("The sharing server has not answered 3 times. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.")}
+ }
+ syncing=false;renderNet();
+}
+async function shareCall(path,extra,okFn){
+ if(!net.online){syncMsg("You need a connection for this. Try again when you are online.");return}
+ syncMsg("Working...");
+ try{const r=await api(path,extra);
+  if(!r.ok){syncMsg(ERR[r.data&&r.data.error]||"That did not work ("+r.status+"). Please try again.");return}
+  okFn(r.data)}
+ catch(e){const up=await probe();syncMsg(up?"The sharing server is offline right now. Please try again later.":"No connection. Try again when you are online.");if(!up)setOnline(false)}
+}
+$("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");syncNow(false)});
+$("sharejoin").onclick=()=>{const c=$("joincode").value.replace(/\D/g,"");if(c.length!==4){syncMsg("Type the 4 digits you were given.");return}
+ shareCall("/v1/join",{code:c},d=>{S.sync.space=d.space;$("joincode").value="";applyGroup(d);syncMsg("Joined. Syncing now...");syncNow(false)})};
+$("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{applyGroup(d);syncMsg("Here is a new code.")});
 $("syncnow").onclick=()=>syncNow(true);
-$("syncoff").onclick=()=>{S.sync.code="";$("synccode").value="";save();syncStatus("Stopped syncing. Your journeys stay on this device.")};
+let leaveArm=0,endArm=0;
+$("leavegrp").onclick=()=>{if(!leaveArm){leaveArm=1;$("leavegrp").textContent="Press again to leave";setTimeout(()=>{leaveArm=0;$("leavegrp").textContent="Leave this group"},4000);return}
+ leaveArm=0;$("leavegrp").textContent="Leave this group";shareCall("/v1/leave",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("You left the group. Your journeys stay on this device.")})};
+$("disbandgrp").onclick=()=>{if(!endArm){endArm=1;$("disbandgrp").textContent="Press again: this removes everyone";setTimeout(()=>{endArm=0;$("disbandgrp").textContent="End sharing for everyone"},4000);return}
+ endArm=0;$("disbandgrp").textContent="End sharing for everyone";shareCall("/v1/disband",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("Sharing ended for everyone. Each person keeps their own journeys.")})};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)scheduleSync()});
 setInterval(()=>{if(!document.hidden)scheduleSync()},90000);
+/* ---------- share the app itself ---------- */
+const APP_URL="https://iangough.github.io/myev-calculator/";
+const APP_TEXT="MyEV Calculator: work out what an electric car journey costs, with stops and a petrol comparison.\nOpen it here: "+APP_URL+"\niPhone: open it in Safari, tap Share, then Add to Home Screen.\nAndroid: open it in Chrome, tap the three dots, then Install app.\nLaptop: just open the link.";
+$("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
+$("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
+if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
+$("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
+function regSW(){if("serviceWorker" in navigator&&/github\.io$/.test(location.hostname)){navigator.serviceWorker.register("sw.js").catch(()=>{})}}
 /* ---------- save / copy ---------- */
 function renderPlaces(){
  const L=Object.entries(S.places);
@@ -578,7 +692,7 @@ function init(){updatePlaces();
 }
 const gotShared=loadShared();
 init();
-if(normCode(S.sync.code))scheduleSync();
+renderShare();renderNet();probe().then(setOnline);if(S.sync.space)scheduleSync();regSW();
 if(gotShared)$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";
 })();
 </script>
