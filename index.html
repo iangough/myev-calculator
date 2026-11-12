@@ -80,11 +80,12 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <h2>Route</h2>
     <div id="pts"></div><datalist id="places"></datalist>
     <div class="row">
-     <button class="btn alt" id="addstop" type="button">Add a stop</button>
+     <button class="btn alt" id="addstop" type="button" hidden>Add another stop</button>
      <button class="btn alt" id="recalc" type="button">Recalculate miles</button>
      <a id="maplink" href="#" target="_blank" rel="noopener">Check in Google Maps</a>
     </div>
     <div class="row" style="margin-top:12px">
+     <label class="chk"><input type="checkbox" id="usestops"> Add stops on the way</label>
      <label class="chk"><input type="checkbox" id="ret" checked> Return trip</label>
      <label class="chk"><input type="checkbox" id="ign"> Ignore stops on return (go straight back)</label>
     </div>
@@ -150,14 +151,19 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
      <p class="note" style="margin:0 0 6px">Miles per kWh. Starting figures marked "guess" are my estimates of real-world use. Overtype any of them and they become yours.</p>
      <div id="carlist"></div>
      <div style="margin-top:10px"><label for="newcar">Add a car (make, model, year)</label>
-      <div class="row"><input id="newcar" placeholder="Start typing, e.g. Kia EV6" style="flex:1;min-width:180px"><datalist id="carnames"></datalist><button class="btn alt" id="addcar" type="button">Add car</button></div>
+      <div class="row"><input id="newcar" placeholder="Type the make and model here" style="flex:1;min-width:180px"><datalist id="carnames"></datalist><button class="btn alt" id="addcar" type="button">Add car</button></div>
       <p class="msg" id="carmsg"></p>
       <p class="note">Pick a car from the list (about 700 electric cars, with model year) and it fills in estimated real-world miles per kWh. If your car is not listed, add it as typed and enter your own figures. Car data: Open EV Data (open-ev-data), licence CDLA-Permissive-2.0.</p></div></div>
+    <div class="card"><h2>Share with another person (sync)</h2>
+     <p class="note" style="margin:0 0 8px" id="syncstatus">Not syncing. Create a code, or type the code from the other person.</p>
+     <label for="synccode">Pairing code</label><input id="synccode" placeholder="Type or paste the code here" autocapitalize="characters" autocomplete="off">
+     <div class="row" style="margin-top:8px"><button class="btn alt sm" id="syncnew" type="button">Create a new code</button><button class="btn alt sm" id="syncjoin" type="button">Use this code</button><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn warn sm" id="syncoff" type="button">Stop syncing</button></div>
+     <p class="note">Two people who use the same code see each other's journeys, favourites and saved places, kept up to date automatically. Create a code on one phone, then send it to the other person and have them type it in here. Anyone with the code can see and change the shared list, so only share it with someone you trust. The code itself is never sent anywhere: only a scrambled version of it is.</p></div>
     <div class="card"><h2>Saved places</h2><div id="placelist"></div><p class="note">Places you saved with a nickname. They appear in the Saved place drop-down on each route point.</p></div>
     <div class="card"><h2>Home and fuel</h2>
      <div class="grid">
       <div><label for="hpc">Home postcode</label><input id="hpc" autocapitalize="characters"></div>
-      <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="e.g. Southern England"></div>
+      <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="Type your region here"></div>
       <div><label for="sppl">Petrol, pence per litre</label><input id="sppl" type="number" step="0.1"></div>
       <div><label for="sdate">Price as of</label><input id="sdate"></div>
       <div><label for="smpg">Petrol car mpg</label><input id="smpg" type="number" step="0.5"></div>
@@ -232,6 +238,9 @@ D.suppliers.forEach(c=>{if(!S.suppliers.find(x=>x.id===c.id))S.suppliers.push(c)
 if(!S.route.pts||S.route.pts.length<2)S.route.pts=[{h:"",p:""},{h:"",p:""}];
 if(!S.route.cache)S.route.cache={};
 if(!S.places)S.places={};
+if(!S.tomb)S.tomb={};
+if(!S.ptomb)S.ptomb={};
+if(!S.sync)S.sync={code:""};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- route ---------- */
@@ -256,20 +265,21 @@ function renderPts(){
    <span class="ptbtns"><button class="btn alt sm" data-up="${i}" type="button" ${i===0?"disabled":""} aria-label="Move up">&#9650; Up</button>
    <button class="btn alt sm" data-dn="${i}" type="button" ${i===n-1?"disabled":""} aria-label="Move down">&#9660; Down</button>
    ${n>2?`<button class="btn warn sm" data-rm="${i}" type="button" aria-label="Remove">Remove</button>`:""}</span></div>
-   <div class="grid"><div class="full"><label>Saved place</label><select data-pick="${i}"><option value="">${placeOpts?"Pick a saved place...":"No saved places yet"}</option>${placeOpts}</select></div><div class="full"><label>Nickname (optional)</label><input data-i="${i}" data-f="n" list="places" value="${esc(q.n||"")}" placeholder="e.g. Emma's house"></div><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="optional"></div>
-   <div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="e.g. SW1A 1AA" autocapitalize="characters"></div><div class="full"><button class="btn alt sm" data-sp="${i}" type="button">Save this place for next time</button> <span class="note" data-spmsg="${i}"></span></div></div>${meta}</div>`}).join("");
- $("pts").querySelectorAll("input[data-f]").forEach(el=>el.addEventListener("input",()=>{R().pts[+el.dataset.i][el.dataset.f]=el.dataset.f==="p"?el.value.toUpperCase():el.value;save();refreshLegs();schedule(900)}));
+   <div class="grid"><div class="full"><label>Saved place</label><select data-pick="${i}"><option value="">${placeOpts?"Pick a saved place...":"No saved places yet"}</option>${placeOpts}</select></div><div class="full"><label>Nickname (optional)</label><input data-i="${i}" data-f="n" list="places" value="${esc(q.n||"")}" placeholder="Type a nickname here (optional)"></div><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="Type house number or name (optional)"></div>
+   <div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="Type postcode here" autocapitalize="characters"></div><div class="full"><button class="btn alt sm" data-sp="${i}" type="button">Save this place for next time</button> <span class="note" data-spmsg="${i}"></span></div></div>${meta}</div>`}).join("");
+ $("pts").querySelectorAll("input[data-f]").forEach(el=>el.addEventListener("input",()=>{R().pts[+el.dataset.i][el.dataset.f]=el.dataset.f==="p"?el.value.toUpperCase():el.value;save();refreshLegs();schedule(350)}));
  $("pts").querySelectorAll('input[data-f="n"]').forEach(el=>el.addEventListener("change",()=>{const q=R().pts[+el.dataset.i],pl=(S.places||{})[(q.n||"").trim().toLowerCase()];if(pl){q.h=pl.h;q.p=pl.p;save();renderPts();refreshLegs();schedule(100)}}));
  $("pts").querySelectorAll("input[data-leg]").forEach(el=>el.addEventListener("input",()=>{const i=+el.dataset.leg;R().cache[pairKey(R().pts[i],R().pts[i+1])]=parseFloat(el.value)||0;save();calc()}));
  $("pts").querySelectorAll("select[data-pick]").forEach(el=>el.addEventListener("change",()=>{const pl=S.places[el.value];if(!pl)return;const q=R().pts[+el.dataset.pick];q.n=pl.n;q.h=pl.h;q.p=pl.p;save();renderPts();refreshLegs();schedule(100)}));
  $("pts").querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{const i=+b.dataset.sp,q=R().pts[i],m=$("pts").querySelector(`[data-spmsg="${i}"]`);
   if(!(q.n&&q.n.trim())){m.textContent="Give it a nickname first.";return}
   if(!validPc(q)){m.textContent="Enter a full postcode first.";return}
-  S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p};save();updatePlaces();renderPts()});
+  S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p,u:Date.now()};save();updatePlaces();renderPts();scheduleSync()});
  $("pts").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
  $("pts").querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
  $("pts").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{R().pts.splice(+b.dataset.rm,1);save();renderPts();calc();schedule(100)});
- $("addstop").disabled=n>=4;
+ $("usestops").checked=n>2;
+ $("addstop").hidden=n<3||n>=4;
  $("directrow").hidden=!(n>2&&R().ign&&R().ret);
 }
 function refreshLegs(){ /* update the small mile boxes without rebuilding the rows (keeps typing focus) */
@@ -278,23 +288,39 @@ function refreshLegs(){ /* update the small mile boxes without rebuilding the ro
 }
 function move(i,d){const P=R().pts,j=i+d;if(j<0||j>=P.length)return;[P[i],P[j]]=[P[j],P[i]];save();renderPts();refreshLegs();schedule(100)}
 $("addstop").onclick=()=>{const P=R().pts;if(P.length>=4)return;P.splice(P.length-1,0,{h:"",p:"",n:""});save();renderPts();calc()};
+$("usestops").onchange=()=>{const P=R().pts;if($("usestops").checked){const back=R().parked||[];R().pts=[P[0]].concat(back.length?back:[{h:"",p:"",n:""}],[P[P.length-1]]);R().parked=[]}else{R().parked=P.slice(1,-1);R().pts=[P[0],P[P.length-1]]}save();renderPts();refreshLegs();schedule(100)};
 $("ret").onchange=()=>{R().ret=$("ret").checked;save();renderPts();refreshLegs();schedule(100)};
 $("ign").onchange=()=>{R().ign=$("ign").checked;save();renderPts();refreshLegs();schedule(100)};
 $("direct").addEventListener("input",()=>{const P=R().pts;R().cache[pairKey(P[0],P[P.length-1])]=parseFloat($("direct").value)||0;save();calc()});
 
 /* automatic road-mile lookup: postcodes.io + OpenStreetMap routing. Works on the laptop copy and on a normal web host. */
-const gcache={};let busy=false,again=false,blocked=false,timer=null;
+const gcache={};let busy=false,again=false,blocked=false,blockedAt=0,timer=null;
+function tfetch(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||8000);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t))}
+/* postcode (and house) to a point on the map: tries several free services in turn */
 async function geocode(q){
  const k=pcKey(q);if(gcache[k])return gcache[k];
- let g=null;
+ const pc=q.p.trim();let g=null,net=0,notFound=false;
  if(q.h.trim()){
-  try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q="+encodeURIComponent(q.h+", "+q.p));
-   const j=await r.json();if(j[0])g={lat:+j[0].lat,lon:+j[0].lon,exact:true}}catch(e){}
+  try{const r=await tfetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q="+encodeURIComponent(q.h+", "+pc));
+   const j=await r.json();if(j[0])g={lat:+j[0].lat,lon:+j[0].lon,exact:true}}catch(e){net++}
  }
- if(!g){const r=await fetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(q.p.trim()));
-  const j=await r.json();if(!j.result)throw new Error("Postcode not found: "+q.p);
-  g={lat:j.result.latitude,lon:j.result.longitude,exact:false}}
+ if(!g){try{const r=await tfetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(pc),6000);
+   const j=await r.json();if(j.result)g={lat:j.result.latitude,lon:j.result.longitude,exact:false};else notFound=true}catch(e){net++}}
+ if(!g){try{const r=await tfetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q="+encodeURIComponent(pc));
+   const j=await r.json();if(j[0])g={lat:+j[0].lat,lon:+j[0].lon,exact:false};else notFound=true}catch(e){net++}}
+ if(!g){if(notFound&&net<2)throw new Error("Postcode not found: "+pc);throw new TypeError("The address lookup services could not be reached")}
  gcache[k]=g;return g;
+}
+/* driving distance in miles between two points: tries several free routing services in turn */
+async function roadMiles(a,b){
+ const co=`${a.lon},${a.lat};${b.lon},${b.lat}`;
+ const tries=[
+  async()=>{const r=await tfetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${co}?overview=false`);const j=await r.json();return j.routes&&j.routes[0]&&j.routes[0].distance/1609.344},
+  async()=>{const r=await tfetch(`https://router.project-osrm.org/route/v1/driving/${co}?overview=false`);const j=await r.json();return j.routes&&j.routes[0]&&j.routes[0].distance/1609.344},
+  async()=>{const q={locations:[{lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon}],costing:"auto",units:"miles"};const r=await tfetch("https://valhalla1.openstreetmap.de/route?json="+encodeURIComponent(JSON.stringify(q)));const j=await r.json();return j.trip&&j.trip.summary&&j.trip.summary.length}
+ ];
+ for(const f of tries){try{const v=await f();if(v&&v>0)return v}catch(e){}}
+ throw new TypeError("The road routing services could not be reached");
 }
 function mapsLink(){
  const P=R().pts.map(q=>encodeURIComponent(addr(q))),mid=P.slice(1,-1).join("%7C");
@@ -308,20 +334,18 @@ async function ensureRoute(force){
  if(n>2&&R().ign&&R().ret)pairs.push([P[0],P[n-1]]);
  const need=pairs.filter(([a,b])=>validPc(a)&&validPc(b)&&(force||!(pairKey(a,b) in R().cache)));
  if(!need.length)return;
- if(blocked&&!force)return;
+ if(blocked&&!force&&Date.now()-blockedAt<20000)return;
  busy=true;blocked=false;$("findmsg").textContent="Looking up the driving route...";
  try{
   for(const [a,b] of need){
    const ga=await geocode(a),gb=await geocode(b);
-   const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${ga.lon},${ga.lat};${gb.lon},${gb.lat}?overview=false`);
-   const j=await r.json();if(!j.routes||!j.routes[0])throw new Error("No driving route found");
-   R().cache[pairKey(a,b)]=miles1(j.routes[0].distance/1609.344);
+   R().cache[pairKey(a,b)]=miles1(await roadMiles(ga,gb));
    const keys=Object.keys(R().cache);if(keys.length>300)delete R().cache[keys[0]];
    save();refreshLegs();
   }
   $("findmsg").textContent="Road miles filled in by the fastest driving route. Postcode centres are used where no house was found, so allow a little either way.";
  }catch(e){
-  if(e&&e.name==="TypeError"){blocked=true;$("findmsg").innerHTML=`Automatic road miles are not available on this page (the browser blocks the lookup here). <a href="${mapsLink()}" target="_blank" rel="noopener">Open the route in Google Maps</a> and type the miles into the small boxes.`}
+  if(e&&e.name==="TypeError"){blocked=true;blockedAt=Date.now();$("findmsg").innerHTML=`Automatic road miles are not available on this page (the browser blocks the lookup here). <a href="${mapsLink()}" target="_blank" rel="noopener">Open the route in Google Maps</a> and type the miles into the small boxes.`}
   else $("findmsg").textContent=(e&&e.message)||"Lookup failed";
  }
  busy=false;if(again){again=false;schedule(300)}
@@ -411,19 +435,48 @@ function loadShared(){
  try{const o=dec(h.slice(7));if(!o||!Array.isArray(o.pts)||o.pts.length<2||o.pts.length>4)return false;
   R().pts=o.pts.map(q=>({h:String(q.h||"").slice(0,60),p:String(q.p||"").toUpperCase().slice(0,10),n:String(q.n||"").slice(0,40)}));
   R().ret=!!o.ret;R().ign=!!o.ign;
-  R().pts.forEach(q=>{if(q.n.trim()&&validPc(q)&&!S.places[q.n.trim().toLowerCase()])S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p}});
+  R().pts.forEach(q=>{if(q.n.trim()&&validPc(q)&&!S.places[q.n.trim().toLowerCase()])S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p,u:Date.now()}});
   save();try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
   return true}catch(e){return false}
 }
+/* ---------- sync with one other person (via the Synology service) ---------- */
+const SYNC_URL="https://myev.cloudgough.synology.me:8443";
+let syncing=false,syncTimer=null;
+const normCode=c=>String(c||"").replace(/[\s-]/g,"").toUpperCase();
+async function sha256hex(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
+function newCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",r=new Uint8Array(20);crypto.getRandomValues(r);const c=Array.from(r).map(x=>A[x%32]);return[0,5,10,15].map(i=>c.slice(i,i+5).join("")).join("-")}
+function syncStatus(t){$("syncstatus").textContent=t}
+function scheduleSync(){if(!normCode(S.sync.code))return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),1500)}
+async function syncNow(manual){
+ const code=normCode(S.sync.code);if(!code){if(manual)syncStatus("Create or enter a pairing code first.");return}
+ if(syncing)return;syncing=true;syncStatus("Syncing...");
+ try{
+  const space=await sha256hex("myev:"+code);
+  const res=await fetch(SYNC_URL+"/v1/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({space,trips:S.trips,places:S.places,tomb:S.tomb,ptomb:S.ptomb})});
+  if(!res.ok)throw new Error("server said "+res.status);
+  const j=await res.json();
+  S.trips=Array.isArray(j.trips)?j.trips:S.trips;S.places=j.places&&typeof j.places==="object"?j.places:S.places;S.tomb=j.tomb||S.tomb;S.ptomb=j.ptomb||S.ptomb;
+  save();renderTrips();updatePlaces();renderPts();
+  syncStatus("Synced "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". "+S.trips.length+" journeys, "+Object.keys(S.places).length+" saved places shared.");
+ }catch(e){syncStatus("Could not reach the sync service just now. Your journeys are safe on this device and will sync when it is reachable.")}
+ syncing=false;
+}
+$("synccode").value=S.sync.code||"";
+$("syncnew").onclick=()=>{S.sync.code=newCode();$("synccode").value=S.sync.code;save();syncNow(true)};
+$("syncjoin").onclick=()=>{const c=normCode($("synccode").value);if(c.length<16){syncStatus("That code is too short. Paste the full code the other person sent.");return}S.sync.code=$("synccode").value.trim().toUpperCase();save();syncNow(true)};
+$("syncnow").onclick=()=>syncNow(true);
+$("syncoff").onclick=()=>{S.sync.code="";$("synccode").value="";save();syncStatus("Stopped syncing. Your journeys stay on this device.")};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)scheduleSync()});
+setInterval(()=>{if(!document.hidden)scheduleSync()},90000);
 /* ---------- save / copy ---------- */
 function renderPlaces(){
  const L=Object.entries(S.places);
  $("placelist").innerHTML=L.length?L.map(([k,p])=>`<div class="trip"><div><b>${esc(p.n)}</b><br><small style="color:var(--mute)">${esc((p.h?p.h+" ":"")+p.p)}</small></div><button class="btn warn sm" data-delplace="${esc(k)}" type="button">Delete</button></div>`).join(""):`<p class="note">No saved places yet.</p>`;
- $("placelist").querySelectorAll("[data-delplace]").forEach(b=>b.onclick=()=>{delete S.places[b.dataset.delplace];save();updatePlaces();renderPts()});
+ $("placelist").querySelectorAll("[data-delplace]").forEach(b=>b.onclick=()=>{S.ptomb[b.dataset.delplace]=Date.now();delete S.places[b.dataset.delplace];save();updatePlaces();renderPts();scheduleSync()});
 }
 function updatePlaces(){renderPlaces();$("places").innerHTML=Object.values(S.places).map(p=>`<option value="${esc(p.n)}"></option>`).join("")}
-function rememberPlaces(){R().pts.forEach(q=>{if(q.n&&q.n.trim()&&q.p.trim()&&validPc(q))S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p}});updatePlaces()}
-$("save").onclick=()=>{calc();if(!last)return;rememberPlaces();S.trips.unshift(Object.assign({id:uid()},last));S.trips=S.trips.slice(0,500);save();renderTrips();$("ok").textContent="Saved";setTimeout(()=>$("ok").textContent="",2000)};
+function rememberPlaces(){R().pts.forEach(q=>{if(q.n&&q.n.trim()&&q.p.trim()&&validPc(q))S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p,u:Date.now()}});updatePlaces();scheduleSync()}
+$("save").onclick=()=>{calc();if(!last)return;rememberPlaces();S.trips.unshift(Object.assign({id:uid(),u:Date.now()},last));S.trips=S.trips.slice(0,500);save();renderTrips();scheduleSync();$("ok").textContent="Saved";setTimeout(()=>$("ok").textContent="",2000)};
 $("copy").onclick=()=>{calc();const t=textOut();
  const done=()=>{$("ok").textContent="Copied";setTimeout(()=>$("ok").textContent="",2000)};
  const fail=()=>{$("ok").textContent="Copy blocked here"};
@@ -454,8 +507,8 @@ function renderTrips(){
     <tr><td>Saved vs petrol</td><td class="g">${gbp(t.petrol-t.c1)} cheap, ${gbp(t.petrol-t.c2)} normal</td></tr>
     ${t.legTxt?`<tr><td>Stops (outward)</td><td style="white-space:normal">${esc(t.legTxt).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
     <div class="row" style="margin-top:10px"><button class="btn alt sm" id="favtrip" type="button">${t.fav?"★ Remove from favourites":"☆ Add to favourites"}</button>${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load this route</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
-   $("favtrip").onclick=()=>{t.fav=!t.fav;save();renderTrips()};
-   $("deltrip").onclick=()=>{S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips()};
+   $("favtrip").onclick=()=>{t.fav=!t.fav;t.u=Date.now();save();renderTrips();scheduleSync()};
+   $("deltrip").onclick=()=>{S.tomb[t.id]=Date.now();S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips();scheduleSync()};
    if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p,n:q.n||""}));R().ret=!!t.ret;R().ign=!!t.ign;save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();schedule(100);window.scrollTo({top:0,behavior:"smooth"})};
   };
   $("tripsel").onchange=show;show();
@@ -463,7 +516,7 @@ function renderTrips(){
 }
 let clearArm=false;
 $("clear").onclick=()=>{if(!clearArm){clearArm=true;$("clear").textContent="Press again to delete all";setTimeout(()=>{clearArm=false;$("clear").textContent="Clear all journeys"},4000);return}
- S.trips=[];save();clearArm=false;$("clear").textContent="Clear all journeys";renderTrips()};
+ S.trips.forEach(t=>{S.tomb[t.id]=Date.now()});S.trips=[];save();clearArm=false;$("clear").textContent="Clear all journeys";renderTrips()};
 
 /* ---------- settings ---------- */
 function renderCars(keepFocus){
@@ -525,6 +578,7 @@ function init(){updatePlaces();
 }
 const gotShared=loadShared();
 init();
+if(normCode(S.sync.code))scheduleSync();
 if(gotShared)$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";
 })();
 </script>
