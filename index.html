@@ -387,7 +387,7 @@ function renderPts(){
  $("pts").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
  $("pts").querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
  $("pts").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{R().pts.splice(+b.dataset.rm,1);save();renderPts();calc();schedule(100);toast("✓ Stop removed")});
- $("usestops").checked=n>2;
+ $("usestops").checked=n>2;{const lb=$("ign").closest("label");if(lb)lb.hidden=!(n>2)}
  $("addstop").hidden=n<3||n>=4;
  $("directrow").hidden=!(n>2&&R().ign&&R().ret);
 }
