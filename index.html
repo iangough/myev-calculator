@@ -674,7 +674,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13h";
+const BUILD="2026-11-13i";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -777,13 +777,13 @@ const carFacts=c=>{const n=c[0],f={},y=n.match(/\((20\d\d)\)\s*$/);if(y)f.year=y
  const d=n.match(/\b(RWD|AWD|FWD|4WD|2WD)\b/i);if(d)f.drive=d[1].toUpperCase();
  if(/long range/i.test(n))f.ver="Long range";else if(/standard range/i.test(n))f.ver="Standard range";
  const w=n.match(/(\d\d)\s?(?:inch|in)\b/i);if(w)f.wheels=w[1]+" inch";return f};
-const carMatch=(c,F)=>{const f=carFacts(c);return Object.keys(F).every(g=>f[g]===F[g])};
+const carMatch=(c,F)=>{const f=carFacts(c);return Object.keys(F).every(g=>f[g]===F[g]||(g==="drive"&&!f.drive))};
 const CHIPNAME={year:"Year",drive:"Drive",ver:"Version",wheels:"Wheels"};
 function carChips(all,F){let h="";
  ["year","drive","ver","wheels"].forEach(g=>{const m={};all.forEach(c=>{const v=carFacts(c)[g];if(v)m[v]=(m[v]||0)+1});const ks=Object.keys(m).sort();
   if(ks.length<2&&!F[g])return;
   h+=`<div style="margin:6px 0"><small style="color:var(--mute)">${CHIPNAME[g]}: </small>`+ks.map(v=>`<button class="btn ${F[g]===v?"":"alt"} sm" style="margin:2px" data-chip="${g}|${esc(v)}" type="button">${esc(v)} (${m[v]})</button>`).join("")+`</div>`});
- return h?`<div class="note" style="margin-bottom:6px"><b>Narrow it down:</b>${h}<small style="color:var(--mute)">Some entries do not say which drive or version they are, so they disappear when you pick one. Tap the button again to clear it.</small></div>`:""}
+ return h?`<div class="note" style="margin-bottom:6px"><b>Narrow it down:</b>${h}<small style="color:var(--mute)">Some entries do not say which drive they are (they stay in the list). Tap a lit-up button again to clear it.</small></div>`:""}
 function renderCarFinder(inputId,outId,afterAdd){
  const q=$(inputId).value.trim(),out=$(outId);
  if(!q){out.innerHTML="";return}
