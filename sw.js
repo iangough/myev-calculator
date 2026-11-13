@@ -1,7 +1,7 @@
 /* MyEV Calculator service worker: keeps the app itself on the device so it opens with no signal.
    Pages are served from the saved copy straight away and refreshed in the background, so a new
    version appears the next time the app is opened. Live lookups (road miles, sharing) are never cached. */
-const CACHE = "myev-shell-v3";
+const CACHE = "myev-shell-v4";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -25,7 +25,7 @@ self.addEventListener("fetch", e => {
   e.respondWith(
     caches.open(CACHE).then(async cache => {
       const hit = await cache.match(r, { ignoreSearch: true });
-      const fresh = fetch(r).then(res => {
+      const fresh = fetch(r,{cache:"no-cache"}).then(res => {
         if (res && res.ok) cache.put(r.mode === "navigate" ? "./" : r, res.clone());
         return res;
       }).catch(() => null);
