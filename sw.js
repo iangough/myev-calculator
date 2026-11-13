@@ -1,7 +1,7 @@
 /* MyEV Calculator service worker: keeps the app itself on the device so it opens with no signal.
    Pages are served from the saved copy straight away and refreshed in the background, so a new
    version appears the next time the app is opened. Live lookups (road miles, sharing) are never cached. */
-const CACHE = "myev-shell-v4";
+const CACHE = "myev-shell-v5";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -22,11 +22,12 @@ self.addEventListener("fetch", e => {
   const u = new URL(r.url);
   if (u.origin !== location.origin) return;            // other websites: not touched
   if (u.pathname.endsWith("/ping.txt") || u.pathname.endsWith("/version.txt")) return;         // connection check: always the network
+  if (u.pathname.endsWith("/admin.html") || u.pathname.endsWith("/admin.webmanifest")) return;   // the admin console is never saved or mixed up with the app
   e.respondWith(
     caches.open(CACHE).then(async cache => {
       const hit = await cache.match(r, { ignoreSearch: true });
       const fresh = fetch(r,{cache:"no-cache"}).then(res => {
-        if (res && res.ok) cache.put(r.mode === "navigate" ? "./" : r, res.clone());
+        if (res && res.ok) cache.put(r.mode === "navigate" && (u.pathname.endsWith("/") || u.pathname.endsWith("/index.html")) ? "./" : r, res.clone());
         return res;
       }).catch(() => null);
       if (hit) { e.waitUntil(fresh); return hit; }
