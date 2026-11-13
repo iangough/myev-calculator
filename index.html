@@ -578,8 +578,9 @@ function fillSelects(){
 function defOf(c){if(c.def)return c.def;let d=null;const pr=PRESETS.find(x=>x.id===c.id||(x.name===c.name&&c.preset));if(pr)d={sum:pr.sum,nor:pr.nor,win:pr.win};
  else{const hit=CARS.find(x=>x[0]===c.name);if(hit){const F=FACT[srcOf(hit)];d={sum:est(hit[1],F.sum),nor:est(hit[1],F.nor),win:est(hit[1],F.win)}}}
  if(d)c.def=d;return d}
+function snap(c){if(!defOf(c)){c.def={sum:c.sum,nor:c.nor,win:c.win};c.defWas=true}}
 function dfHTML(c,f){const d=c.def||defOf(c);if(!d||Math.abs((+c[f]||0)-d[f])<0.005)return "";
- return `<button type="button" data-reset="${c.id}|${f}" title="Put back the app's estimate">Estimate ${d[f]}, reset</button>`}
+ return `<button type="button" data-reset="${c.id}|${f}" title="Put back the app's estimate">${c.defWas?"Was":"Estimate"} ${d[f]}, reset</button>`}
 function renderDef(){const c=carNow();["sum","nor","win"].forEach(f=>{const el=$("d_"+f);if(el)el.innerHTML=dfHTML(c,f)});
  document.querySelectorAll("#carlist .edit").forEach(row=>{const cc=S.cars.find(x=>x.id===row.dataset.id);if(!cc)return;["sum","nor","win"].forEach(f=>{const el=row.querySelector('[data-dfl="'+f+'"]');if(el)el.innerHTML=dfHTML(cc,f)})})}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-reset]");if(!b)return;const [id,f]=b.dataset.reset.split("|"),c=S.cars.find(x=>x.id===id),d=c&&(c.def||defOf(c));if(!c||!d)return;
@@ -590,7 +591,7 @@ function loadCar(){const c=carNow();$("e_sum").value=c.sum;$("e_nor").value=c.no
 function loadSupplier(){const s=S.suppliers.find(x=>x.id===S.sel.sup);if(!s)return;
  $("cheap").value=s.cheap;$("norm").value=s.normal;$("supnote").textContent=(s.note||"")+(S.home.region?" Region: "+S.home.region+".":"")}
 function loadFuel(){$("ppl").value=S.fuel.ppl;$("mpg").value=S.fuel.mpg}
-["e_sum","e_nor","e_win"].forEach(id=>$(id).addEventListener("input",()=>{const c=carNow();defOf(c);c[id.slice(2)]=parseFloat($(id).value)||0;c.src="mine";c.edited=true;save();$("src").textContent="(your figures)";$("src").className="src mine";renderCars(true);calc()}));
+["e_sum","e_nor","e_win"].forEach(id=>$(id).addEventListener("input",()=>{const c=carNow();snap(c);c[id.slice(2)]=parseFloat($(id).value)||0;c.src="mine";c.edited=true;save();$("src").textContent="(your figures)";$("src").className="src mine";renderCars(true);calc()}));
 ["season","cheap","norm","ppl","mpg"].forEach(id=>$(id).addEventListener("input",()=>{if(id==="season"){S.sel.season=$("season").value;save()}calc()}));
 $("car").onchange=()=>{S.sel.car=$("car").value;save();loadCar();calc()};
 $("sup").onchange=()=>{S.sel.sup=$("sup").value;save();loadSupplier();calc()};
@@ -691,7 +692,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13o";
+const BUILD="2026-11-13p";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -777,7 +778,7 @@ function renderCars(keepFocus){
   <div><label>Winter</label><input data-f="win" type="number" step="0.1" value="${c.win}"><div class="dfl" data-dfl="win">${dfHTML(c,"win")}</div></div><div></div>
   <button class="btn warn sm" data-rm="${c.id}" type="button">Remove</button></div>`).join("");
  $("carlist").querySelectorAll("input").forEach(i=>i.addEventListener("input",()=>{const c=S.cars.find(x=>x.id===i.closest(".edit").dataset.id),f=i.dataset.f;
-  defOf(c);c[f]=f==="name"?i.value:(parseFloat(i.value)||0);c.src="mine";c.edited=true;save();if(f!=="name")renderDef();
+  snap(c);c[f]=f==="name"?i.value:(parseFloat(i.value)||0);c.src="mine";c.edited=true;save();if(f!=="name")renderDef();
   const o=$("car").value;$("car").innerHTML=S.cars.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");$("car").value=o;
   if(c.id===S.sel.car)loadCar();calc()}));
  $("carlist").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{if(S.cars.length<2)return;S.cars=S.cars.filter(c=>c.id!==b.dataset.rm);save();fillSelects();loadCar();renderCars();calc()});
