@@ -161,7 +161,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
      <div><label for="norm">Normal rate (p per kWh)</label><input id="norm" type="number" step="0.01" min="0"></div>
      <div><label for="ppl">Petrol (pence per litre)</label><input id="ppl" type="number" step="0.1" min="0"></div>
      <div><label for="mpg">Petrol car mpg (comparison)</label><input id="mpg" type="number" step="0.5" min="1"></div>
-     <div class="full"><button class="btn" id="nearbtn" type="button">Cheapest petrol now near your home</button>
+     <div class="full"><button class="btn" id="nearbtn" type="button">Cheapest petrol now near your home</button> <button class="btn alt" id="neardbtn" type="button">Cheapest diesel now near your home</button>
       <div id="nearout" class="note" style="margin-top:8px"></div></div>
     </div>
     <p class="note" id="supnote"></p>
@@ -416,17 +416,19 @@ function nearHTML(j,fuelName){
  return "<b>Cheapest "+fuelName+" within 6 miles of home</b><br>"+j.stations.map((x,i)=>(i+1)+". <b>"+x.ppl.toFixed(1)+"p</b> "+esc(x.name)+(x.postcode?" ("+esc(x.postcode)+")":"")+", "+x.miles+" mi").join("<br>")+
   "<br><span style='color:var(--mute)'>Prices from the government Fuel Finder service (Open Government Licence), checked "+(mins<1?"just now":mins+" min ago")+". Prices change during the day. <a href='https://www.gov.uk/guidance/fuel-finder' target='_blank' rel='noopener'>Report a discrepancy</a></span>";
 }
-$("nearbtn").onclick=async()=>{
+$("nearbtn").onclick=()=>nearGo("unleaded","petrol");
+$("neardbtn").onclick=()=>nearGo("diesel","diesel");
+async function nearGo(fuel,name){
  const out=$("nearout");
  if(!S.home.postcode.trim()){out.textContent="Type your home postcode first (Settings, Home).";return}
- out.textContent="Looking up petrol prices near "+S.home.postcode+"...";
+ out.textContent="Looking up "+name+" prices near "+S.home.postcode+"...";
  try{
   const g=await geocode({h:"",p:S.home.postcode});
-  const r=await tfetch(SYNC_URL+"/v1/fuel/near?fuel=unleaded&lat="+g.lat.toFixed(2)+"&lon="+g.lon.toFixed(2),20000);
+  const r=await tfetch(SYNC_URL+"/v1/fuel/near?fuel="+fuel+"&lat="+g.lat.toFixed(2)+"&lon="+g.lon.toFixed(2),20000);
   if(!r.ok)throw new Error("service "+r.status);
-  out.innerHTML=nearHTML(await r.json(),"unleaded");
+  out.innerHTML=nearHTML(await r.json(),fuel==="diesel"?"diesel":"unleaded");
  }catch(e){out.textContent="Could not get live prices just now: "+(e&&e.message?e.message:"no connection")+". Try again in a minute."}
-};
+}
 /* driving distance in miles between two points: tries several free routing services in turn */
 async function roadMiles(a,b){
  const co=`${a.lon},${a.lat};${b.lon},${b.lat}`;
@@ -667,7 +669,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13c";
+const BUILD="2026-11-13d";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -770,12 +772,18 @@ function renderCarFinder(inputId,outId,afterAdd){
 }
 $("carq").addEventListener("input",()=>renderCarFinder("carq","carres",n=>{$("carmsg").textContent="Added "+n+". Overtype its miles per kWh in the list above if you know better."}));
 $("w_carq").addEventListener("input",()=>renderCarFinder("w_carq","w_carres",n=>{S.cars=S.cars.filter(c=>!(c.preset&&!c.edited));save();fillSelects();loadCar();renderCars();calc();$("w_carres").innerHTML='<p class="msg">Selected: '+esc(n)+'</p>'}));
+function stdLine(c){const cs=((S.catalog&&S.catalog.suppliers)||[]).find(x=>String(x.id)===String(c.id));
+ if(!cs)return "";const same=(+cs.cheap===+c.cheap)&&(+cs.normal===+c.normal);
+ return same?`<div class="name"><small style="color:var(--mute)">Standard rates (from MyEV): ${cs.cheap} / ${cs.normal}p. These are the same as yours.</small></div>`:
+  `<div class="name"><small style="color:var(--mute)">Your own rates are in use. Standard (from MyEV): ${cs.cheap} / ${cs.normal}p.</small> <button class="btn alt sm" data-std="${esc(c.id)}" type="button">Use the standard rates</button></div>`}
 function renderSups(){
  $("suplist").innerHTML=S.suppliers.map(c=>`<div class="edit" data-id="${c.id}"><div class="name"><label>Supplier / tariff</label><input data-f="name" value="${esc(c.name)}"></div>
   <div><label>Cheap p</label><input data-f="cheap" type="number" step="0.01" value="${c.cheap}"></div>
   <div><label>Normal p</label><input data-f="normal" type="number" step="0.01" value="${c.normal}"></div>
   <div class="name"><label>Note</label><input data-f="note" value="${esc(c.note||"")}"></div>
-  <button class="btn warn sm" data-rm="${c.id}" type="button">Remove</button></div>`).join("");
+  ${stdLine(c)}<button class="btn warn sm" data-rm="${c.id}" type="button">Remove</button></div>`).join("");
+ $("suplist").querySelectorAll("[data-std]").forEach(b=>b.onclick=()=>{const cs=((S.catalog&&S.catalog.suppliers)||[]).find(x=>String(x.id)===b.dataset.std),c=S.suppliers.find(x=>x.id===b.dataset.std);
+  if(!cs||!c)return;c.name=String(cs.name||c.name);c.cheap=+cs.cheap||0;c.normal=+cs.normal||0;c.note=String(cs.note||"");delete c.mine;save();renderSups();fillSelects();loadSupplier();calc()});
  $("suplist").querySelectorAll("input").forEach(i=>i.addEventListener("input",()=>{const c=S.suppliers.find(x=>x.id===i.closest(".edit").dataset.id),f=i.dataset.f;
   c[f]=(f==="name"||f==="note")?i.value:(parseFloat(i.value)||0);c.mine=true;save();
   const o=$("sup").value;$("sup").innerHTML=S.suppliers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");$("sup").value=o;
