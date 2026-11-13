@@ -406,12 +406,16 @@ $("direct").addEventListener("input",()=>{const P=R().pts;R().cache[pairKey(P[0]
 const gcache={};let busy=false,again=false,blocked=false,blockedAt=0,timer=null;
 function tfetch(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||4000);return fetch(u,{signal:c.signal,cache:"no-store"}).finally(()=>clearTimeout(t))}
 /* postcode (and house) to a point on the map: tries several free services in turn */
+const hav=(a,b)=>{const R=3958.8,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lon-a.lon),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
 async function geocode(q){
  const k=pcKey(q);if(gcache[k])return gcache[k];
  const pc=q.p.trim();let g=null,net=0,notFound=false;
  if(q.h.trim()){
   try{const r=await tfetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q="+encodeURIComponent(q.h+", "+pc));
    const j=await r.json();if(j[0])g={lat:+j[0].lat,lon:+j[0].lon,exact:true}}catch(e){net++}
+  /* a house search can match a same-named street in another town: only trust it if it is close to the postcode centre */
+  if(g){try{const r=await tfetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(pc),6000);const j=await r.json();
+   if(j.result&&hav(g,{lat:j.result.latitude,lon:j.result.longitude})>1.5)g=null}catch(e){}}
  }
  if(!g){try{const r=await tfetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(pc),6000);
    const j=await r.json();if(j.result)g={lat:j.result.latitude,lon:j.result.longitude,exact:false};else notFound=true}catch(e){net++}}
@@ -490,6 +494,7 @@ function lookupFailed(){
  else{$("findmsg").textContent="Still no answer. Type the miles in the small boxes if you know them.";showRetry("No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.")}
 }
 function schedule(ms){clearTimeout(timer);timer=setTimeout(()=>ensureRoute(false),ms)}
+let warnLeg="";
 async function ensureRoute(force){
  if(busy){again=true;return}
  const P=R().pts,n=P.length,pairs=[];
@@ -499,16 +504,18 @@ async function ensureRoute(force){
  if(!need.length)return;
  if(!net.online&&!force){$("findmsg").textContent="You are offline, so road miles can't be looked up. Type the miles in the small boxes (they are kept). I will look them up when you are back online.";return}
  if(net.pausedUntil>Date.now()&&!force)return;
- busy=true;$("findmsg").textContent="Looking up the driving route...";
+ busy=true;warnLeg="";$("findmsg").textContent="Looking up the driving route...";
  try{
   for(const [a,b] of need){
-   const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);return roadMiles(ga,gb)})(),10000);
+   let sl=0;const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);sl=hav(ga,gb);return roadMiles(ga,gb)})(),10000);
    R().cache[pairKey(a,b)]=miles1(m);
+   if(m>sl*2.2+4){warnLeg=`Check ${a.p.toUpperCase()} to ${b.p.toUpperCase()}: the road distance (${miles1(m)} mi) is much longer than the straight-line distance (${miles1(sl)} mi). A house number may have been matched to the wrong place: try removing it, or overtype the miles in the small box.`}
    const keys=Object.keys(R().cache);if(keys.length>300)delete R().cache[keys[0]];
    save();refreshLegs();
   }
   net.fails=0;hideRetry();
-  $("findmsg").textContent="Road miles filled in by the fastest driving route. Postcode centres are used where no house was found, so allow a little either way.";
+  $("findmsg").textContent=warnLeg||"Road miles filled in by the fastest driving route. Postcode centres are used where no house was found, so allow a little either way.";
+  if(warnLeg)toast("Please check the miles: they look too long",true);
  }catch(e){
   if(e&&e.name==="TypeError"){lookupFailed();probe().then(setOnline)}
   else $("findmsg").textContent=(e&&e.message)||"Lookup failed";
@@ -692,7 +699,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13p";
+const BUILD="2026-11-13q";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
