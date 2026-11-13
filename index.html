@@ -669,7 +669,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13d";
+const BUILD="2026-11-13e";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -758,7 +758,12 @@ function renderCars(keepFocus){
 function pushCar(c){S.cars.push(Object.assign({id:uid(),src:"guess"},c));S.sel.car=S.cars[S.cars.length-1].id;save();fillSelects();loadCar();renderCars();calc()}
 const FACT={W:{sum:0.74,nor:0.66,win:0.56},E:{sum:1.05,nor:0.95,win:0.75}}; /* my estimates of real use from each source's published figure (W = WLTP, E = EPA, which already includes charging losses): always overtype */
 const srcOf=c=>c[4]==="E"?"E":"W";
-const carQ=q=>{const t=q.toLowerCase().split(/\s+/).filter(Boolean);if(!t.length)return[];return CARS.filter(c=>{const n=c[0].toLowerCase();return t.every(w=>n.indexOf(w)>=0)}).slice(0,12)};
+const carQ=q=>{const ql=q.toLowerCase().trim(),t=ql.split(/\s+/).filter(Boolean);if(!t.length)return[];
+ const pre=t.map(w=>new RegExp("(^|[^a-z0-9])"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+ let r=CARS.filter(c=>{const n=c[0].toLowerCase();return pre.every(re=>re.test(n))});
+ if(!r.length)r=CARS.filter(c=>{const n=c[0].toLowerCase();return t.every(w=>n.indexOf(w)>=0)});
+ r.sort((a,b)=>(b[0].toLowerCase().indexOf(ql)>=0)-(a[0].toLowerCase().indexOf(ql)>=0));
+ return r.slice(0,12)};
 const est=(w,x)=>(Math.round(w*x*10)/10);
 function carRow(c){const F=FACT[srcOf(c)];const bat=c[2]?c[2]+" kWh battery":"battery size not published";const sn=srcOf(c)==="E"?"US EPA figures (US version of the car)":"official WLTP figures";return `<div class="trip"><div><b>${esc(c[0])}</b><br><small style="color:var(--mute)">${bat} · range ${c[3]} km (${Math.round(c[3]*0.621371)} mi) · from ${sn}<br>My estimate for real use: ${est(c[1],F.win).toFixed(1)} winter, ${est(c[1],F.nor).toFixed(1)} normal, ${est(c[1],F.sum).toFixed(1)} summer miles per kWh</small></div><button class="btn alt sm" data-addcar="${esc(c[0])}" type="button">Use this car</button></div>`}
 function renderCarFinder(inputId,outId,afterAdd){
