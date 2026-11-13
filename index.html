@@ -721,7 +721,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13t";
+const BUILD="2026-11-13u";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -732,8 +732,8 @@ async function checkUpdate(){
    document.body.appendChild(d);
    $("updgo").onclick=async()=>{const b=$("updgo");b.disabled=true;b.textContent="Updating...";
     /* one tap brings the app fully up to date: empty the saved copies, drop the old service worker, then reload from the network */
-    try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}
-     if(navigator.serviceWorker){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}
+    try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.filter(k=>k.indexOf("myev-")===0).map(k=>caches.delete(k)))}
+     if(navigator.serviceWorker){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.filter(r=>r.scope.indexOf("/myev-calculator/")>=0).map(r=>r.unregister()))}
     }catch(e){}
     location.reload()}}
  }catch(e){}

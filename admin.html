@@ -73,6 +73,7 @@ a{color:var(--accent)}
     <button role="tab" data-tab="tariffs" aria-selected="false">Tariffs and petrol</button>
     <button role="tab" data-tab="places" aria-selected="false">Places and routes</button>
     <button role="tab" data-tab="notice" aria-selected="false">Notice</button>
+    <button role="tab" data-tab="chintzy" aria-selected="false">Chintzy</button>
     <button role="tab" data-tab="backup" aria-selected="false">Backup</button>
    </div>
    <div class="row"><span id="dirtymsg" class="dirty" hidden>Unpublished changes</span><button class="btn" id="publish" type="button">Publish changes</button><button class="btn alt" id="lock" type="button">Lock</button></div>
@@ -173,6 +174,27 @@ a{color:var(--accent)}
    <div class="tw"><table id="n_tbl"></table></div>
   </section>
 
+  <section id="t-chintzy" class="card" hidden>
+   <h2>Chintzy (cheapest petrol app)</h2>
+   <p class="note" style="margin:0 0 8px">Chintzy is the companion to MyEV: it lists the 10 cheapest petrol stations near a postcode and can send price-drop alerts. The buttons on this tab take effect straight away; they do not need Publish changes. No names are stored: each phone is only an anonymous alert address with a rounded location.</p>
+   <div class="tiles" id="c_tiles"></div>
+   <p class="msg" id="c_status"></p>
+   <h2 style="margin-top:16px">Controls</h2>
+   <div class="row"><button class="btn alt" id="c_pause" type="button">Pause alerts</button>
+    <label for="c_int" style="margin:0 0 0 8px">Refresh every</label><select id="c_int" style="width:auto"><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="600">10 minutes</option><option value="900">15 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option></select>
+    <button class="btn alt" id="c_now" type="button">Refresh prices now</button></div>
+   <label for="c_notice" style="margin-top:12px">Notice shown to Chintzy users (300 characters at most; empty shows nothing)</label>
+   <textarea id="c_notice" maxlength="300" style="min-height:70px;font-family:var(--body);font-size:15px"></textarea>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="c_savenotice" type="button">Publish Chintzy notice</button><button class="btn bad" id="c_test" type="button">Send a test alert to every subscribed phone</button><button class="btn alt" id="c_refresh" type="button">Refresh this page</button></div>
+   <p class="msg" id="c_msg"></p>
+   <h2 style="margin-top:16px">Fuels in the data</h2>
+   <div class="tw"><table id="c_fuels"></table></div>
+   <h2 style="margin-top:16px">Alert rules in force</h2>
+   <p class="note" id="c_rules" style="margin:0"></p>
+   <h2 style="margin-top:16px">Recent alerts</h2>
+   <div class="tw"><table id="c_log"></table></div>
+  </section>
+
   <section id="t-backup" class="card" hidden>
    <h2>Backup and restore</h2>
    <p class="note" style="margin:0 0 8px">Download everything you manage here (tariffs, petrol price, places, routes, notice and a summary of the groups). Journeys themselves are not included.</p>
@@ -230,13 +252,13 @@ $("lock").onclick=()=>{KEY="";try{sessionStorage.removeItem("myev-admin-key")}ca
 async function loadAll(){
  const [o,c]=await Promise.all([call("/v1/admin/overview"),call("/v1/admin/catalog_get")]);
  ov=o;cat={suppliers:c.suppliers||[],places:c.places||[],routes:c.routes||[],fuel:c.fuel||{},announcement:c.announcement||"",ver:c.ver||0,tariffsChecked:c.tariffsChecked||0};
- setDirty(false);renderAll();
+ setDirty(false);renderAll();loadChz();
 }
 
 /* ---------- tabs ---------- */
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
- ["overview","groups","tariffs","places","notice","backup"].forEach(t=>{$("t-"+t).hidden=t!==b.dataset.tab});
+ ["overview","groups","tariffs","places","notice","chintzy","backup"].forEach(t=>{$("t-"+t).hidden=t!==b.dataset.tab});if(b.dataset.tab==="chintzy")loadChz();
 });
 async function loadAcks(){try{const r=await call("/v1/admin/notice_acks");const t=$("n_tbl");
  if(!r.text){$("n_sum").textContent="No notice is published at the moment.";t.innerHTML="";return}
@@ -245,6 +267,37 @@ async function loadAcks(){try{const r=await call("/v1/admin/notice_acks");const 
  t.innerHTML="<tr><th>Who</th><th>Seen</th><th>Dismissed</th></tr>"+r.devices.map(d=>"<tr><td>"+esc(d.name||("Device "+d.id))+"</td><td>"+f(d.seen)+"</td><td>"+(d.dismissed?f(d.dismissed):"Not yet")+"</td></tr>").join("")}catch(e){$("n_sum").textContent="Could not load: "+e.message}}
 $("n_refresh").onclick=loadAcks;
 function renderAll(){loadAcks();renderOverview();renderGroups();renderSup();renderFuel();renderPlaces();renderRoutes();$("n_text").value=cat.announcement||""}
+
+
+/* ---------- Chintzy (companion app) ---------- */
+let chz=null;
+const CFN={unleaded:"Unleaded (E10)",super:"Super unleaded (E5)",diesel:"Diesel",premium_diesel:"Premium diesel",hvo:"HVO diesel",b10:"B10 diesel"};
+function cmsg(t,bad){$("c_msg").textContent=t;$("c_msg").className="msg "+(bad?"err":"ok")}
+async function loadChz(){try{chz=await call("/v1/admin/chintzy");renderChz()}catch(e){cmsg("Could not load Chintzy: "+e.message,true)}}
+function renderChz(){
+ const c=chz;if(!c)return;
+ const tile=(a,b)=>`<div class="tile"><small>${esc(a)}</small><b>${esc(b)}</b></div>`;
+ $("c_tiles").innerHTML=[tile("Last price refresh",c.fetched?ago(c.fetched):"not yet"),tile("Stations with prices",c.stations),tile("Phones with alerts",c.subsOn+(c.subs!==c.subsOn?" of "+c.subs:"")),tile("Alerts sent today",c.sentToday),tile("Alerts sent in total",c.sentTotal),tile("Refresh took",c.dur?c.dur+" s":"-"),tile("Failed sends",c.failTotal),tile("Dead phones removed",c.goneTotal)].join("");
+ $("c_status").textContent=c.err?"The last refresh failed: "+c.err+". The older prices are still being served.":(c.refreshing?"Refreshing now...":"Prices refresh every "+Math.round(c.interval/60)+" minutes. "+(c.paused?"ALERTS ARE PAUSED: nobody is being notified.":"Alerts are on."+(c.quiet?" It is quiet hours now, so none are sent until the morning.":"")));
+ $("c_status").className="msg "+(c.err||c.paused?"err":"ok");
+ $("c_pause").textContent=c.paused?"Resume alerts":"Pause alerts";
+ $("c_int").value=String(c.interval);
+ if(document.activeElement!==$("c_notice"))$("c_notice").value=c.notice||"";
+ $("c_fuels").innerHTML="<tr><th>Fuel</th><th>Stations with a price</th><th>Phones watching it</th></tr>"+Object.keys(CFN).map(k=>"<tr><td>"+esc(CFN[k])+"</td><td>"+(c.counts[k]||0)+"</td><td>"+((c.byFuel||{})[k]||0)+"</td></tr>").join("");
+ const L=c.limits||{};
+ $("c_rules").textContent="Only real drops (default 1p or more, each phone can choose 1, 2, 3 or 5p; falls over 30p are ignored as data errors) at a station in that phone's top 10. One alert per refresh per phone, at most "+L.perHour+" an hour and "+L.perDay+" a day, the same station not repeated for "+L.cooldownH+" hours, none between "+L.quiet+" UK time.";
+ const f=x=>new Date(x*1000).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+ $("c_log").innerHTML=(c.log&&c.log.length)?"<tr><th>When</th><th>Phone</th><th>Message</th><th>Result</th></tr>"+c.log.map(l=>"<tr><td>"+f(l.t)+"</td><td>"+esc(l.s)+"</td><td style='white-space:normal;min-width:240px'>"+esc(l.msg)+"</td><td>"+(l.code>=200&&l.code<300?"Delivered to the push service":"Failed ("+l.code+")")+"</td></tr>").join(""):"<tr><td>No alerts sent yet.</td></tr>";
+}
+async function setChz(body,ok){try{chz=await call("/v1/admin/chintzy_set",body);renderChz();cmsg(ok)}catch(e){cmsg(e.message,true)}}
+$("c_pause").onclick=()=>setChz({paused:!(chz&&chz.paused)},chz&&chz.paused?"Alerts resumed.":"Alerts paused. Prices keep refreshing.");
+$("c_int").onchange=()=>setChz({interval:+$("c_int").value},"Refresh interval saved.");
+$("c_now").onclick=async()=>{await setChz({refresh_now:true},"Refreshing now. This takes about 40 seconds: press Refresh this page afterwards.")};
+$("c_savenotice").onclick=()=>setChz({notice:$("c_notice").value},$("c_notice").value.trim()?"Notice published. Chintzy users will see it the next time they open the app.":"Notice removed.");
+$("c_refresh").onclick=async()=>{await loadChz();cmsg("Refreshed.")};
+let cArm=false;
+$("c_test").onclick=async()=>{const b=$("c_test");if(!cArm){cArm=true;b.textContent="Press again to confirm: this notifies "+(chz?chz.subsOn:"all")+" phone(s)";setTimeout(()=>{cArm=false;b.textContent="Send a test alert to every subscribed phone"},6000);return}
+ cArm=false;b.textContent="Send a test alert to every subscribed phone";try{const r=await call("/v1/admin/chintzy_test");cmsg("Test sent to "+r.sent+" phone(s), "+r.failed+" failed"+(r.removed?", "+r.removed+" dead one(s) removed":"")+".");loadChz()}catch(e){cmsg(e.message,true)}};
 
 /* ---------- overview ---------- */
 function renderOverview(){
