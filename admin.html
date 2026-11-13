@@ -107,6 +107,8 @@ a{color:var(--accent)}
   <section id="t-tariffs" class="card" hidden>
    <h2>Electricity tariffs</h2>
    <p class="note" style="margin:0 0 8px">These are the standard tariffs every phone gets. A person who has changed a tariff on their own phone keeps their version. Rates are pence per kWh.</p>
+   <p class="note" id="tchk" style="margin:0 0 8px"></p>
+   <div class="row" style="margin:0 0 8px"><button class="btn alt sm" id="tchkbtn" type="button">I have checked these rates today</button></div>
    <div class="tw"><table id="stable"></table></div>
    <div class="row" style="margin-top:10px"><button class="btn alt" id="addsup" type="button">Add a tariff</button><button class="btn alt" id="defsup" type="button">Load the app's starting list</button></div>
    <h2 style="margin-top:16px">Bulk changes</h2>
@@ -282,7 +284,12 @@ $("b_add").onclick=()=>{let n=0;$("b_paste").value.split(/\n/).forEach(l=>{const
  if(n){setDirty(true);renderSup();$("b_paste").value=""}$("smsg").textContent=n?n+" tariff(s) added.":"No valid lines found. Use: name, cheap, normal, note.";$("smsg").className="msg "+(n?"ok":"err")};
 $("provq").addEventListener("input",()=>{$("provgo").href="https://www.google.com/search?q="+encodeURIComponent(($("provq").value||"energy supplier")+" EV tariff unit rate p/kWh")});
 $("provq").dispatchEvent(new Event("input"));
-function renderFuel(){$("f_ppl").value=cat.fuel.ppl||"";$("f_date").value=cat.fuel.date||"";$("f_note").value=cat.fuel.note||""}
+function renderChk(){const t=+cat.tariffsChecked||0,el=$("tchk");
+ if(!t){el.textContent="The date these rates were last checked is not recorded yet.";el.style.color="var(--bad,#ff8a7a)";return}
+ const d=Math.floor((Date.now()/1000-t)/86400);el.textContent="Rates last checked on "+new Date(t*1000).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+" ("+d+" days ago)."+(d>90?" That is over 90 days: please check them against the suppliers and the Ofgem price cap, then press the button below and Publish.":"");
+ el.style.color=d>90?"var(--bad,#ff8a7a)":""}
+$("tchkbtn").onclick=()=>{cat.tariffsChecked=Math.floor(Date.now()/1000);renderChk();setDirty(true)};
+function renderFuel(){renderChk();$("f_ppl").value=cat.fuel.ppl||"";$("f_date").value=cat.fuel.date||"";$("f_note").value=cat.fuel.note||""}
 ["f_ppl","f_date","f_note"].forEach(id=>$(id).addEventListener("input",()=>{cat.fuel={ppl:parseFloat($("f_ppl").value)||0,date:$("f_date").value,note:$("f_note").value};setDirty(true)}));
 $("n_text").addEventListener("input",()=>{cat.announcement=$("n_text").value;setDirty(true)});
 
