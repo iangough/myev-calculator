@@ -407,26 +407,39 @@ const gcache={};let busy=false,again=false,blocked=false,blockedAt=0,timer=null;
 function tfetch(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||4000);return fetch(u,{signal:c.signal,cache:"no-store"}).finally(()=>clearTimeout(t))}
 /* postcode (and house) to a point on the map: tries several free services in turn */
 const hav=(a,b)=>{const R=3958.8,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lon-a.lon),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
+const sleepMs=ms=>new Promise(r=>setTimeout(r,ms));
+async function nomi(u){await sleepMs(1050);const r=await tfetch(u,7000);return r.json()}  /* the free map service asks for one request a second */
 async function geocode(q){
  const k=pcKey(q);if(gcache[k])return gcache[k];
  const pc=q.p.trim();let c=null,net=0,notFound=false;
- /* step 1: the centre of the postcode (a handful of houses): this is the anchor everything else must stay close to */
+ /* step 1: the centre of the postcode: the anchor everything else must stay close to */
  try{const r=await tfetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(pc),6000);
    const j=await r.json();if(j.result)c={lat:j.result.latitude,lon:j.result.longitude};else notFound=true}catch(e){net++}
  if(!c){try{const r=await tfetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb&q="+encodeURIComponent(pc));
    const j=await r.json();if(j[0])c={lat:+j[0].lat,lon:+j[0].lon};else notFound=true}catch(e){net++}}
  if(!c){if(notFound&&net<2)throw new Error("Postcode not found: "+pc);throw new TypeError("The address lookup services could not be reached")}
  const g={lat:c.lat,lon:c.lon,exact:false,note:""};
- /* step 2: a house number or name is only used if it is found within about a mile of that postcode centre.
-    A name like "Mallards" or "Treetops" exists in many places, so a match anywhere else is thrown away. */
- if(q.h.trim()){
+ const house=q.h.trim();
+ if(house){
+  /* step 2: which road is this postcode on? */
+  let road="",town="";
+  try{const j=await nomi(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&addressdetails=1&lat=${c.lat}&lon=${c.lon}`);
+   const a=(j&&j.address)||{};road=a.road||a.pedestrian||a.residential||"";town=a.town||a.village||a.suburb||a.city||a.hamlet||""}catch(e){}
+  const dLat=0.024,dLon=0.04,vb=[c.lon-dLon,c.lat+dLat,c.lon+dLon,c.lat-dLat].join(",");
+  const near=x=>({lat:+x.lat,lon:+x.lon,d:hav(c,{lat:+x.lat,lon:+x.lon})});
+  const best=(arr,max)=>(arr||[]).map(near).filter(x=>x.d<=max).sort((a,b)=>a.d-b.d)[0]||null;
   let hit=null;
-  try{const dLat=0.016,dLon=0.026,vb=[c.lon-dLon,c.lat+dLat,c.lon+dLon,c.lat-dLat].join(",");
-   const r=await tfetch("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=gb&bounded=1&viewbox="+vb+"&q="+encodeURIComponent(q.h+", "+pc),6000);
-   const j=await r.json();
-   hit=(j||[]).map(x=>({lat:+x.lat,lon:+x.lon,d:hav(c,{lat:+x.lat,lon:+x.lon})})).filter(x=>x.d<=1.0).sort((a,b)=>a.d-b.d)[0]||null}catch(e){}
+  /* step 3: the house, looked for ON that road and within about a mile of the postcode: a "Mallards" or "Treetops" anywhere else is ignored */
+  if(road){try{hit=best(await nomi("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=gb&bounded=1&viewbox="+vb+"&q="+encodeURIComponent(house+", "+road+(town?", "+town:"")+", "+pc)),1.0)}catch(e){}}
+  if(!hit){try{hit=best(await nomi("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=gb&bounded=1&viewbox="+vb+"&q="+encodeURIComponent(house+", "+pc)),0.6)}catch(e){}}
   if(hit){g.lat=hit.lat;g.lon=hit.lon;g.exact=true}
-  else g.note="Could not find “"+q.h.trim()+"” near "+pc.toUpperCase()+", so the middle of that postcode is used";
+  else{
+   /* step 4: not found on the road: use the middle of the road, as a sat nav does */
+   let mid=null;
+   if(road){try{mid=best(await nomi("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=gb&bounded=1&viewbox="+vb+"&q="+encodeURIComponent(road+(town?", "+town:""))),1.5)}catch(e){}}
+   if(mid){g.lat=mid.lat;g.lon=mid.lon;g.note="Could not find “"+house+"” on "+road+(town?", "+town:"")+", so the middle of "+road+" is used"}
+   else g.note="Could not find “"+house+"” near "+pc.toUpperCase()+", so the middle of that postcode is used";
+  }
  }
  gcache[k]=g;return g;
 }
@@ -513,7 +526,7 @@ async function ensureRoute(force){
  busy=true;warnLeg="";geoNotes.length=0;$("findmsg").textContent="Looking up the driving route...";
  try{
   for(const [a,b] of need){
-   let sl=0;const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);sl=hav(ga,gb);[ga,gb].forEach(x=>{if(x.note&&geoNotes.indexOf(x.note)<0)geoNotes.push(x.note)});return roadMiles(ga,gb)})(),10000);
+   let sl=0;const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);sl=hav(ga,gb);[ga,gb].forEach(x=>{if(x.note&&geoNotes.indexOf(x.note)<0)geoNotes.push(x.note)});return roadMiles(ga,gb)})(),30000);
    R().cache[pairKey(a,b)]=miles1(m);
    if(m>sl*2.2+4){warnLeg=`Check ${a.p.toUpperCase()} to ${b.p.toUpperCase()}: the road distance (${miles1(m)} mi) is much longer than the straight-line distance (${miles1(sl)} mi). A house number may have been matched to the wrong place: try removing it, or overtype the miles in the small box.`}
    const keys=Object.keys(R().cache);if(keys.length>300)delete R().cache[keys[0]];
@@ -706,7 +719,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13r";
+const BUILD="2026-11-13s";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
