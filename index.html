@@ -533,8 +533,7 @@ let editingId=null;
 function carNow(){return S.cars.find(c=>c.id===S.sel.car)||S.cars[0]}
 async function runDiag(){const out=document.getElementById("diagout");if(!out)return;out.textContent="Checking...";
  const P=R().pts,a=(P[0]&&validPc(P[0]))?P[0].p.trim():"SP11 6ZG";const lines=["App version "+BUILD+" ("+(navigator.onLine?"phone says it is online":"phone says it is OFFLINE")+")"];
- const t=async(name,fn)=>{const t0=Date.now();try{const r=await fn();lines.push("OK    "+name+" ("+(Date.now()-t0)+" ms)"+(r?" "+r:""))}catch(e){lines.push("FAIL  "+name+": "+((e&&e.name==="AbortError")?"no answer in time":"blocked or not reachable"))}out.textContent=lines.join("
-")};
+ const t=async(name,fn)=>{const t0=Date.now();try{const r=await fn();lines.push("OK    "+name+" ("+(Date.now()-t0)+" ms)"+(r?" "+r:""))}catch(e){lines.push("FAIL  "+name+": "+((e&&e.name==="AbortError")?"no answer in time":"blocked or not reachable"))}out.textContent=lines.join("\n")};
  let ll=null;
  await t("Postcode lookup (postcodes.io)",async()=>{const r=await tfetch("https://api.postcodes.io/postcodes/"+encodeURIComponent(a),7000);const j=await r.json();if(!j.result)throw new Error("none");ll=j.result;return j.result.admin_district||""});
  const co="-1.437106,51.208879;-0.840192,51.278883";
@@ -542,8 +541,7 @@ async function runDiag(){const out=document.getElementById("diagout");if(!out)re
  await t("Road route B (router.project-osrm.org)",async()=>{const r=await tfetch("https://router.project-osrm.org/route/v1/driving/"+co+"?overview=false",8000);const j=await r.json();return (j.routes[0].distance/1609.344).toFixed(1)+" mi test route"});
  await t("Road route C (valhalla)",async()=>{const q={locations:[{lat:51.208879,lon:-1.437106},{lat:51.278883,lon:-0.840192}],costing:"auto",units:"miles"};const r=await tfetch("https://valhalla1.openstreetmap.de/route?json="+encodeURIComponent(JSON.stringify(q)),8000);const j=await r.json();return j.trip.summary.length.toFixed(1)+" mi test route"});
  await t("MyEV service (Synology)",async()=>{await tfetch(SYNC_URL+"/v1/ping",8000)});
- lines.push("If every road route says FAIL, something on this phone is blocking them (an ad or tracker blocker, a VPN, or the network). Tell Claude what this list says.");out.textContent=lines.join("
-")}
+ lines.push("If every road route says FAIL, something on this phone is blocking them (an ad or tracker blocker, a VPN, or the network). Tell Claude what this list says.");out.textContent=lines.join("\n")}
 document.addEventListener("click",e=>{if(e.target&&e.target.id==="diagbtn")runDiag()});
 /* why section 3 is still empty, in plain words */
 function waitWhy(){const P=R().pts,n=P.length;const miss=[];P.forEach((q,i)=>{if(!validPc(q))miss.push(role(i,n))});
@@ -721,7 +719,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13y";
+const BUILD="2026-11-13z";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
