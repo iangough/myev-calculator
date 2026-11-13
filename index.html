@@ -503,7 +503,7 @@ async function ensureRoute(force){
  if(!need.length)return;
  if(!net.online&&!force){$("findmsg").textContent="You are offline, so road miles can't be looked up. Type the miles in the small boxes (they are kept). I will look them up when you are back online.";return}
  if(net.pausedUntil>Date.now()&&!force)return;
- busy=true;warnLeg="";geoNotes.length=0;$("findmsg").textContent="Looking up the driving route...";
+ busy=true;warnLeg="";geoNotes.length=0;calc();$("findmsg").textContent="Looking up the driving route...";
  try{
   for(const [a,b] of need){
    let sl=0;const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);sl=hav(ga,gb);[ga,gb].forEach(x=>{if(x.note&&geoNotes.indexOf(x.note)<0)geoNotes.push(x.note)});return roadMiles(ga,gb)})(),30000);
@@ -531,6 +531,13 @@ $("recalc").onclick=()=>{const P=R().pts,n=P.length;
 let last=null;
 let editingId=null;
 function carNow(){return S.cars.find(c=>c.id===S.sel.car)||S.cars[0]}
+/* why section 3 is still empty, in plain words */
+function waitWhy(){const P=R().pts,n=P.length;const miss=[];P.forEach((q,i)=>{if(!validPc(q))miss.push(role(i,n))});
+ if(miss.length)return "The cost appears here once there is a full postcode in: "+miss.join(" and ")+".";
+ if(!net.online)return "You are offline, so the driving miles cannot be looked up. Type the miles in the small box under the To point and the cost appears here.";
+ if(net.fails>0&&net.fails<3)return "The road-distance service has not answered yet. Trying again...";
+ if(net.fails>=3)return "The road-distance service is not answering. Type the miles in the small box under the To point, or press Recalculate miles to try again.";
+ return "Working out the driving miles... the cost appears here in a moment."}
 function calc(){
  const car=carNow();if(!car)return;
  const P=R().pts,n=P.length,L=legMiles();
@@ -540,7 +547,7 @@ function calc(){
  const miles=out+back;
  if(!(miles>0)){
   $("maplink").href=mapsLink();$("maplink2").href=mapsLinkReturn();$("maplink2").hidden=!R().ret;
-  $("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:var(--mute)">Type the From and To postcodes and the cost appears here.</td></tr>';
+  $("res").innerHTML=`<tr><td style="text-align:left;white-space:normal;color:var(--mute)">${waitWhy()}</td></tr>`;
   $("legres").innerHTML="";$("saving").textContent="";["h_c1","h_c2","h_p"].forEach(x=>$(x).textContent="-");last=null;return}
  const t1=num("cheap")/100,t2=num("norm")/100,loss=1+(S.fuel.loss||0)/100;
  const sel=$("season").value;
@@ -699,7 +706,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13w";
+const BUILD="2026-11-13x";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
