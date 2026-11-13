@@ -674,7 +674,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13g";
+const BUILD="2026-11-13h";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -774,9 +774,9 @@ function carRow(c){const F=FACT[srcOf(c)];const bat=c[2]?c[2]+" kWh battery":"ba
 /* quick filter buttons for the car finder: year, drive, version, wheels, worked out from each car's name */
 const CF={};
 const carFacts=c=>{const n=c[0],f={},y=n.match(/\((20\d\d)\)\s*$/);if(y)f.year=y[1];
- const d=n.match(/(RWD|AWD|FWD|4WD|2WD)/i);if(d)f.drive=d[1].toUpperCase();
+ const d=n.match(/\b(RWD|AWD|FWD|4WD|2WD)\b/i);if(d)f.drive=d[1].toUpperCase();
  if(/long range/i.test(n))f.ver="Long range";else if(/standard range/i.test(n))f.ver="Standard range";
- const w=n.match(/(\d\d)\s?(?:inch|in)/i);if(w)f.wheels=w[1]+" inch";return f};
+ const w=n.match(/(\d\d)\s?(?:inch|in)\b/i);if(w)f.wheels=w[1]+" inch";return f};
 const carMatch=(c,F)=>{const f=carFacts(c);return Object.keys(F).every(g=>f[g]===F[g])};
 const CHIPNAME={year:"Year",drive:"Drive",ver:"Version",wheels:"Wheels"};
 function carChips(all,F){let h="";
