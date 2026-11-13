@@ -552,8 +552,9 @@ function waitWhy(){const P=R().pts,n=P.length;const miss=[];P.forEach((q,i)=>{if
  if(net.fails>=3)return "The road-distance service is not answering. Type the miles in the small box under the To point, or press Recalculate miles to try again.";
  return "Working out the driving miles... the cost appears here in a moment. If this stays here for more than about 15 seconds, press the button below."}
 function diagBox(){return `<div style="margin-top:8px"><button class="btn alt sm" id="diagbtn" type="button">Check what is wrong</button></div>`}
-function calc(){
- const car=carNow();if(!car)return;
+function calc(){try{calc0()}catch(e){try{$("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:#b3261e">Section 3 hit a problem: '+esc(String(e&&e.message||e))+'. Please send this sentence to Claude. '+"</td></tr>"+'<tr><td>'+diagBox()+"</td></tr>"}catch(_){}}}
+function calc0(){
+ const car=carNow();if(!car){$("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:#b3261e">No car is selected. Choose a car in section 1.</td></tr>';return}
  const P=R().pts,n=P.length,L=legMiles();
  const out=L.reduce((a,b)=>a+b,0);
  const ign=R().ign&&n>2,ret=R().ret;
@@ -720,7 +721,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-14a";
+const BUILD="2026-11-14b";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -946,5 +947,4 @@ renderShare();renderNet();probe().then(ok=>{setOnline(ok);if(ok)fetchCatalog()})
 if(gotShared){$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";S.welcomed=true;$("welcome").hidden=true}
 })();
 </script>
-
 </body></html>
