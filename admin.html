@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b1830">
+<title>MyEV Admin</title>
+<link rel="manifest" href="admin.webmanifest">
+<link rel="icon" href="icon-admin-192.png">
+<link rel="apple-touch-icon" href="icon-admin-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* One narrow-to-wide column of cards under a tab row; tables scroll sideways inside their own box */
+:root{--bg:#0b1830;--card:#12264a;--fg:#e8eefc;--mute:#9db2d6;--line:#27437a;--accent:#f2b84b;--accent-fg:#241a05;--good:#5fd38d;--bad:#ff8f7a;--hl:#183564;
+ --head:'Space Grotesk','Segoe UI',Arial,sans-serif;--body:'Inter','Segoe UI',Arial,sans-serif;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#e6eefb;--card:#fff;--fg:#10233f;--mute:#566a85;--line:#c5d4ec;--accent:#9a5b00;--accent-fg:#fff;--good:#0a7a3b;--bad:#a1311f;--hl:#e0ebfd;color-scheme:light}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);padding:14px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font:700 26px var(--head);margin:0}
+h2{font:700 17px var(--head);margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:600 14px var(--body);padding:8px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);cursor:pointer}
+.btn.alt{background:transparent;color:var(--accent)}
+.btn.bad{background:transparent;color:var(--bad);border-color:var(--bad)}
+.btn[disabled]{opacity:.4;cursor:default}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:600 14px var(--body);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+input,select,textarea{width:100%;box-sizing:border-box;font:15px var(--body);padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.tile small{display:block;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.tile b{font:700 24px var(--head);font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
+th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+td input{min-width:90px;padding:5px 6px}
+td input.n{width:90px;min-width:0}
+td input.w{min-width:200px}
+.note{color:var(--mute);font-size:13px;margin:6px 0 0}
+.msg{margin:8px 0 0;font-size:14px}
+.ok{color:var(--good)}.err{color:var(--bad)}
+a{color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.dirty{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="row" style="justify-content:space-between"><h1>MyEV Admin</h1><span class="note" id="who">Locked</span></div>
+
+ <div class="card" id="login">
+  <h2>Unlock</h2>
+  <label for="key">Admin key</label>
+  <div class="row"><input id="key" type="password" autocomplete="off" placeholder="Type or paste your admin key here" style="max-width:420px"><button class="btn" id="unlock" type="button">Unlock</button></div>
+  <p class="msg" id="loginmsg"></p>
+  <p class="note">The key is checked by your Synology and is kept only in this browser tab. Five wrong tries lock the console for an hour.</p>
+ </div>
+
+ <div id="app" hidden>
+  <div class="row" style="justify-content:space-between">
+   <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button role="tab" data-tab="groups" aria-selected="false">Groups</button>
+    <button role="tab" data-tab="tariffs" aria-selected="false">Tariffs and petrol</button>
+    <button role="tab" data-tab="places" aria-selected="false">Places and routes</button>
+    <button role="tab" data-tab="notice" aria-selected="false">Notice</button>
+    <button role="tab" data-tab="backup" aria-selected="false">Backup</button>
+   </div>
+   <div class="row"><span id="dirtymsg" class="dirty" hidden>Unpublished changes</span><button class="btn" id="publish" type="button">Publish changes</button><button class="btn alt" id="lock" type="button">Lock</button></div>
+  </div>
+  <p class="msg" id="pubmsg"></p>
+
+  <section id="t-overview" class="card">
+   <h2>Overview</h2>
+   <div class="tiles" id="tiles"></div>
+   <p class="note" id="svcnote"></p>
+   <div class="row" style="margin-top:10px"><button class="btn alt" id="refresh" type="button">Refresh</button></div>
+  </section>
+
+  <section id="t-groups" class="card" hidden>
+   <h2>Sharing groups</h2>
+   <p class="note" style="margin:0 0 8px">Each row is one family group. Tick the groups you want to change, then use the buttons. Nothing here shows anyone's journeys.</p>
+   <div class="row" style="margin-bottom:8px">
+    <button class="btn alt" id="selall" type="button">Select all</button>
+    <button class="btn alt" id="selnone" type="button">Select none</button>
+    <button class="btn alt" id="selidle" type="button">Select unused (no journeys, 30+ days quiet)</button>
+   </div>
+   <div class="tw"><table id="gtable"></table></div>
+   <div class="row" style="margin-top:10px">
+    <button class="btn alt" id="g_close" type="button">Close invite codes</button>
+    <select id="g_cap" style="width:auto"></select><button class="btn alt" id="g_setcap" type="button">Set group size</button>
+    <button class="btn bad" id="g_clear" type="button">Erase journeys and places</button>
+    <button class="btn bad" id="g_del" type="button">Delete groups</button>
+   </div>
+   <p class="msg" id="gmsg"></p>
+  </section>
+
+  <section id="t-tariffs" class="card" hidden>
+   <h2>Electricity tariffs</h2>
+   <p class="note" style="margin:0 0 8px">These are the standard tariffs every phone gets. A person who has changed a tariff on their own phone keeps their version. Rates are pence per kWh.</p>
+   <div class="tw"><table id="stable"></table></div>
+   <div class="row" style="margin-top:10px"><button class="btn alt" id="addsup" type="button">Add a tariff</button><button class="btn alt" id="defsup" type="button">Load the app's starting list</button></div>
+   <h2 style="margin-top:16px">Bulk changes</h2>
+   <div class="grid2">
+    <div><label for="b_amt">Change by</label><input id="b_amt" type="number" step="0.01" placeholder="e.g. 5 or -2.5"></div>
+    <div><label for="b_mode">How</label><select id="b_mode"><option value="p">Percent</option><option value="a">Pence per kWh</option></select></div>
+    <div><label for="b_which">Applies to</label><select id="b_which"><option value="both">Cheap and normal rates</option><option value="cheap">Cheap rates only</option><option value="normal">Normal rates only</option></select></div>
+    <div><label for="b_only">Rows</label><select id="b_only"><option value="all">All tariffs</option><option value="ticked">Ticked tariffs only</option></select></div>
+   </div>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="b_apply" type="button">Apply</button></div>
+   <label for="b_paste" style="margin-top:12px">Paste many tariffs (one per line: name, cheap p, normal p, note)</label>
+   <textarea id="b_paste" placeholder="Example&#10;Octopus Cosy, 13.5, 26.3, Heat pump tariff&#10;Shell Energy Drive, 8, 27"></textarea>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="b_add" type="button">Add these tariffs</button></div>
+   <p class="msg" id="smsg"></p>
+   <h2 style="margin-top:16px">Check providers online</h2>
+   <p class="note" style="margin:0 0 6px">I can't read live supplier prices for you, so these open the places to check. Compare like with like: the same region, payment method and meter type.</p>
+   <div class="row">
+    <a class="btn alt" target="_blank" rel="noopener" href="https://www.ofgem.gov.uk/energy-price-cap">Ofgem price cap</a>
+    <a class="btn alt" target="_blank" rel="noopener" href="https://www.google.com/search?q=best+EV+electricity+tariffs+UK+p%2FkWh">Search EV tariffs</a>
+    <a class="btn alt" target="_blank" rel="noopener" href="https://www.google.com/search?q=energy+suppliers+UK+EV+tariff+compare">Search supplier lists</a>
+   </div>
+   <label for="provq" style="margin-top:10px">Look up one provider by name</label>
+   <div class="row"><input id="provq" placeholder="Type a supplier name here" style="max-width:320px"><a class="btn alt" id="provgo" target="_blank" rel="noopener" href="#">Search the web for its rates</a></div>
+   <h2 style="margin-top:16px">Petrol price</h2>
+   <div class="grid2">
+    <div><label for="f_ppl">Pence per litre</label><input id="f_ppl" type="number" step="0.1"></div>
+    <div><label for="f_date">Price as of</label><input id="f_date" placeholder="Type the date and area here"></div>
+    <div style="grid-column:1/-1"><label for="f_note">Note (optional)</label><input id="f_note" placeholder="Type where the price came from here"></div>
+   </div>
+   <p class="note">Phones that have not set their own petrol price use this one.</p>
+  </section>
+
+  <section id="t-places" class="card" hidden>
+   <h2>Suggested places</h2>
+   <p class="note" style="margin:0 0 8px">These appear in every phone's "Saved place" list under "Suggested places".</p>
+   <div class="tw"><table id="ptable"></table></div>
+   <div class="row" style="margin-top:10px"><button class="btn alt" id="addplace" type="button">Add a place</button></div>
+   <label for="p_paste" style="margin-top:12px">Paste many places (one per line: nickname, house, postcode  or  nickname, postcode)</label>
+   <textarea id="p_paste" placeholder="Example&#10;Andover station, SP10 3GA&#10;Gran's house, 14, GU51 3PF"></textarea>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="p_add" type="button">Add these places</button></div>
+   <p class="msg" id="pmsg"></p>
+
+   <h2 style="margin-top:18px">Starter routes</h2>
+   <p class="note" style="margin:0 0 8px">Each phone gets a "Starter routes" list. A route is a name, a start, an end, optional stops, and whether it returns.</p>
+   <div class="tw"><table id="rtable"></table></div>
+   <label for="r_paste" style="margin-top:12px">Paste many routes (one per line: name | from | to | stops separated by ; | return yes or no | straight back yes or no)</label>
+   <textarea id="r_paste" placeholder="Example&#10;School run | Home | SP10 3GA | | yes | no&#10;Day out | Home | GU51 3PF | RG21 4AB ; Gran's house | yes | yes"></textarea>
+   <p class="note">From, to and stops can be a postcode or one of your suggested place nicknames above. The word Home means each person's own home.</p>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="r_add" type="button">Add these routes</button></div>
+   <p class="msg" id="rmsg"></p>
+  </section>
+
+  <section id="t-notice" class="card" hidden>
+   <h2>Notice for everyone</h2>
+   <p class="note" style="margin:0 0 8px">A short message shown at the top of every phone until the person dismisses it. Leave it empty to show nothing.</p>
+   <label for="n_text">Message (300 characters at most)</label>
+   <textarea id="n_text" maxlength="300" style="min-height:80px;font-family:var(--body);font-size:15px"></textarea>
+  </section>
+
+  <section id="t-backup" class="card" hidden>
+   <h2>Backup and restore</h2>
+   <p class="note" style="margin:0 0 8px">Download everything you manage here (tariffs, petrol price, places, routes, notice and a summary of the groups). Journeys themselves are not included.</p>
+   <div class="row"><button class="btn alt" id="exp" type="button">Download backup</button></div>
+   <label for="imp" style="margin-top:12px">Restore: paste the contents of a backup file</label>
+   <textarea id="imp" placeholder="Paste the backup here"></textarea>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="impgo" type="button">Load into the editor</button></div>
+   <p class="note">Loading only fills in the editor. Nothing changes for anyone until you press Publish changes.</p>
+   <p class="msg" id="bmsg"></p>
+  </section>
+ </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const API="https://myev.cloudgough.synology.me:8443";
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let KEY="";try{KEY=sessionStorage.getItem("myev-admin-key")||""}catch(e){}
+let cat={suppliers:[],places:[],routes:[],fuel:{},announcement:""},dirty=false,ov=null,gsel={};
+const DEFSUP=[
+ {id:"so",name:"So Energy (your current tariff)",cheap:6.5,normal:26.5,note:"Your own rates."},
+ {id:"iog",name:"Octopus Intelligent Go",cheap:7.0,normal:26.3,note:"Sources differ: 3.5 to 8p by region and date. Normal rate is the price cap."},
+ {id:"go",name:"Octopus Go",cheap:8.5,normal:30.1,note:"Indicative."},
+ {id:"flex",name:"Octopus Flexible (price cap)",cheap:26.3,normal:26.3,note:"Ofgem cap, Oct to Dec 2026. Single rate, no cheap window."},
+ {id:"eon",name:"E.ON Next Drive",cheap:8.5,normal:30.9,note:"Sources show 6.9 to 8.5p. Indicative."},
+ {id:"edf",name:"EDF GoElectric",cheap:6.99,normal:26.3,note:"Peak rate not confirmed, shown as the price cap."},
+ {id:"bg",name:"British Gas EV Power",cheap:9.5,normal:26.3,note:"Varies by region. Peak rate not confirmed."},
+ {id:"ovo",name:"OVO Charge Anytime",cheap:13.3,normal:13.3,note:"Flat rate all day, no cheap window."},
+ {id:"cap",name:"Standard tariff (price cap)",cheap:26.3,normal:26.3,note:"Ofgem cap 26.32p, Oct to Dec 2026."}];
+const ERR={bad_key:"That key is not right.",locked_out:"Too many wrong keys. The console is locked for an hour.",admin_not_set:"The admin key has not been set on the Synology yet.",bad_ids:"Nothing selected.",bad_size:"Group size must be 2 to 10.",bad_catalog:"The catalog was not accepted."};
+function setDirty(v){dirty=v;$("dirtymsg").hidden=!v}
+async function call(path,body){
+ const c=new AbortController();const t=setTimeout(()=>c.abort(),12000);
+ try{const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",signal:c.signal,body:JSON.stringify(Object.assign({key:KEY},body||{}))});
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok){const e=new Error(ERR[j.error]||("Request failed ("+r.status+")"));e.code=j.error;throw e}
+  return j}
+ catch(e){if(e.name==="AbortError"||e.name==="TypeError")throw new Error("The Synology did not answer. Check your connection and that the service is running.");throw e}
+ finally{clearTimeout(t)}
+}
+function ago(ts){if(!ts)return"never";const s=Date.now()/1000-ts;if(s<90)return"just now";if(s<5400)return Math.round(s/60)+" min ago";if(s<129600)return Math.round(s/3600)+" hours ago";return Math.round(s/86400)+" days ago"}
+function slug(n){return String(n).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,30)||("t"+Math.random().toString(36).slice(2,6))}
+
+/* ---------- login ---------- */
+async function unlock(k){
+ KEY=k;$("loginmsg").textContent="Checking...";$("loginmsg").className="msg";
+ try{await call("/v1/admin/overview");try{sessionStorage.setItem("myev-admin-key",KEY)}catch(e){}
+  $("login").hidden=true;$("app").hidden=false;$("who").textContent="Unlocked";await loadAll()}
+ catch(e){KEY="";$("loginmsg").textContent=e.message;$("loginmsg").className="msg err"}
+}
+$("unlock").onclick=()=>unlock($("key").value.trim());
+$("key").addEventListener("keydown",e=>{if(e.key==="Enter")unlock($("key").value.trim())});
+$("lock").onclick=()=>{KEY="";try{sessionStorage.removeItem("myev-admin-key")}catch(e){}location.reload()};
+async function loadAll(){
+ const [o,c]=await Promise.all([call("/v1/admin/overview"),call("/v1/admin/catalog_get")]);
+ ov=o;cat={suppliers:c.suppliers||[],places:c.places||[],routes:c.routes||[],fuel:c.fuel||{},announcement:c.announcement||"",ver:c.ver||0};
+ setDirty(false);renderAll();
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+ ["overview","groups","tariffs","places","notice","backup"].forEach(t=>{$("t-"+t).hidden=t!==b.dataset.tab});
+});
+function renderAll(){renderOverview();renderGroups();renderSup();renderFuel();renderPlaces();renderRoutes();$("n_text").value=cat.announcement||""}
+
+/* ---------- overview ---------- */
+function renderOverview(){
+ const t=ov.totals,up=ov.uptime;
+ $("tiles").innerHTML=[["Groups",t.groups+" of "+ov.limits.maxGroups],["People in groups",t.members],["Journeys shared",t.trips],["Places shared",t.places],["Data used",t.kb+" KB"],["Service running",up>86400?Math.floor(up/86400)+" days":up>3600?Math.floor(up/3600)+" hours":Math.floor(up/60)+" min"],["Catalog version",cat.ver||ov.catalogVer]].map(([a,b])=>`<div class="tile"><small>${a}</small><b>${b}</b></div>`).join("");
+ $("svcnote").textContent="Sharing service version "+ov.v+". Groups can have 2 to "+ov.limits.maxGroupSize+" people.";
+}
+$("refresh").onclick=async()=>{try{await loadAll();$("pubmsg").textContent="Refreshed.";$("pubmsg").className="msg ok"}catch(e){$("pubmsg").textContent=e.message;$("pubmsg").className="msg err"}};
+
+/* ---------- groups ---------- */
+for(let i=2;i<=10;i++)$("g_cap").insertAdjacentHTML("beforeend",`<option value="${i}">${i} people</option>`);
+function renderGroups(){
+ const G=ov.groups.slice().sort((a,b)=>(b.touched||0)-(a.touched||0));
+ $("gtable").innerHTML=G.length?`<tr><th></th><th>Group</th><th>People</th><th>Created</th><th>Last sync</th><th>Journeys</th><th>Places</th><th>Invite open</th></tr>`+G.map(g=>`<tr><td><input type="checkbox" class="n" data-g="${g.id}" ${gsel[g.id]?"checked":""} aria-label="Select group ${g.id.slice(0,6)}"></td><td>${g.id.slice(0,6)}</td><td>${g.members} of ${g.cap}</td><td>${ago(g.created)}</td><td>${ago(g.touched)}</td><td>${g.trips}</td><td>${g.places}</td><td>${g.invite?"yes":"no"}</td></tr>`).join(""):'<tr><td class="note">No groups yet.</td></tr>';
+ $("gtable").querySelectorAll("[data-g]").forEach(c=>c.onchange=()=>{gsel[c.dataset.g]=c.checked});
+}
+function picked(){return Object.keys(gsel).filter(k=>gsel[k]&&ov.groups.find(g=>g.id===k))}
+$("selall").onclick=()=>{ov.groups.forEach(g=>gsel[g.id]=true);renderGroups()};
+$("selnone").onclick=()=>{gsel={};renderGroups()};
+$("selidle").onclick=()=>{gsel={};ov.groups.forEach(g=>{if(!g.trips&&(Date.now()/1000-(g.touched||g.created||0))>30*86400)gsel[g.id]=true});renderGroups();$("gmsg").textContent=picked().length+" unused groups ticked.";$("gmsg").className="msg"};
+const armed={};
+function arm(btn,label,fn){btn.onclick=async()=>{
+ const ids=picked();if(!ids.length){$("gmsg").textContent="Tick at least one group first.";$("gmsg").className="msg err";return}
+ if(!armed[btn.id]){armed[btn.id]=1;btn.textContent="Press again to confirm ("+ids.length+")";setTimeout(()=>{armed[btn.id]=0;btn.textContent=label},4000);return}
+ armed[btn.id]=0;btn.textContent=label;
+ try{const r=await fn(ids);$("gmsg").textContent=r;$("gmsg").className="msg ok";gsel={};await loadAll()}catch(e){$("gmsg").textContent=e.message;$("gmsg").className="msg err"}}}
+arm($("g_del"),"Delete groups",async ids=>{const r=await call("/v1/admin/delete",{ids});return r.deleted+" group(s) deleted. Their people are free to start or join another group."});
+arm($("g_clear"),"Erase journeys and places",async ids=>{const r=await call("/v1/admin/clear",{ids});return "Journeys and places erased in "+r.cleared+" group(s). People still in the group keep their own copies on their phones."});
+arm($("g_close"),"Close invite codes",async ids=>{const r=await call("/v1/admin/closeinvite",{ids});return r.closed+" invite code(s) closed."});
+arm($("g_setcap"),"Set group size",async ids=>{const r=await call("/v1/admin/setcap",{ids,cap:+$("g_cap").value});return r.changed+" group(s) changed"+(r.skipped?", "+r.skipped+" skipped because they already have more people than that":"")+"."});
+
+/* ---------- tariffs ---------- */
+function renderSup(){
+ $("stable").innerHTML=cat.suppliers.length?`<tr><th></th><th>Name</th><th>Cheap p</th><th>Normal p</th><th>Note</th><th></th></tr>`+cat.suppliers.map((s,i)=>`<tr><td><input type="checkbox" class="n" data-st="${i}" aria-label="Tick tariff"></td><td><input class="w" data-f="name" data-i="${i}" value="${esc(s.name)}"></td><td><input class="n" type="number" step="0.01" data-f="cheap" data-i="${i}" value="${s.cheap}"></td><td><input class="n" type="number" step="0.01" data-f="normal" data-i="${i}" value="${s.normal}"></td><td><input class="w" data-f="note" data-i="${i}" value="${esc(s.note||"")}"></td><td><button class="btn bad" data-rm="${i}" type="button">Remove</button></td></tr>`).join(""):'<tr><td class="note">No tariffs. Add one, or load the app\'s starting list.</td></tr>';
+ $("stable").querySelectorAll("input[data-f]").forEach(el=>el.addEventListener("input",()=>{const s=cat.suppliers[+el.dataset.i],f=el.dataset.f;s[f]=(f==="name"||f==="note")?el.value:(parseFloat(el.value)||0);setDirty(true)}));
+ $("stable").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{cat.suppliers.splice(+b.dataset.rm,1);setDirty(true);renderSup()});
+}
+$("addsup").onclick=()=>{cat.suppliers.push({id:"t"+Math.random().toString(36).slice(2,7),name:"New tariff",cheap:8,normal:26.3,note:""});setDirty(true);renderSup()};
+$("defsup").onclick=()=>{DEFSUP.forEach(d=>{if(!cat.suppliers.find(x=>x.id===d.id))cat.suppliers.push(Object.assign({},d))});setDirty(true);renderSup();$("smsg").textContent="Starting list loaded.";$("smsg").className="msg ok"};
+$("b_apply").onclick=()=>{
+ const amt=parseFloat($("b_amt").value);if(!amt&&amt!==0||isNaN(amt)){$("smsg").textContent="Type an amount first.";$("smsg").className="msg err";return}
+ const ticked=new Set(Array.from(document.querySelectorAll("[data-st]")).filter(c=>c.checked).map(c=>+c.dataset.st));
+ if($("b_only").value==="ticked"&&!ticked.size){$("smsg").textContent="Tick some tariffs first, or choose All tariffs.";$("smsg").className="msg err";return}
+ const f=v=>Math.max(0,Math.round(($("b_mode").value==="p"?v*(1+amt/100):v+amt)*100)/100);let n=0;
+ cat.suppliers.forEach((s,i)=>{if($("b_only").value==="ticked"&&!ticked.has(i))return;if($("b_which").value!=="normal")s.cheap=f(s.cheap);if($("b_which").value!=="cheap")s.normal=f(s.normal);n++});
+ setDirty(true);renderSup();$("smsg").textContent="Changed "+n+" tariff(s). Press Publish changes to send them to everyone.";$("smsg").className="msg ok"};
+$("b_add").onclick=()=>{let n=0;$("b_paste").value.split(/\n/).forEach(l=>{const p=l.split(",").map(x=>x.trim());if(p.length<3||!p[0])return;const c=parseFloat(p[1]),nr=parseFloat(p[2]);if(isNaN(c)||isNaN(nr))return;cat.suppliers.push({id:slug(p[0]),name:p[0],cheap:c,normal:nr,note:p.slice(3).join(", ")});n++});
+ if(n){setDirty(true);renderSup();$("b_paste").value=""}$("smsg").textContent=n?n+" tariff(s) added.":"No valid lines found. Use: name, cheap, normal, note.";$("smsg").className="msg "+(n?"ok":"err")};
+$("provq").addEventListener("input",()=>{$("provgo").href="https://www.google.com/search?q="+encodeURIComponent(($("provq").value||"energy supplier")+" EV tariff unit rate p/kWh")});
+$("provq").dispatchEvent(new Event("input"));
+function renderFuel(){$("f_ppl").value=cat.fuel.ppl||"";$("f_date").value=cat.fuel.date||"";$("f_note").value=cat.fuel.note||""}
+["f_ppl","f_date","f_note"].forEach(id=>$(id).addEventListener("input",()=>{cat.fuel={ppl:parseFloat($("f_ppl").value)||0,date:$("f_date").value,note:$("f_note").value};setDirty(true)}));
+$("n_text").addEventListener("input",()=>{cat.announcement=$("n_text").value;setDirty(true)});
+
+/* ---------- places and routes ---------- */
+const PC=/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/;
+function renderPlaces(){
+ $("ptable").innerHTML=cat.places.length?`<tr><th>Nickname</th><th>House</th><th>Postcode</th><th></th></tr>`+cat.places.map((p,i)=>`<tr><td><input class="w" data-f="n" data-i="${i}" value="${esc(p.n)}"></td><td><input class="n" data-f="h" data-i="${i}" value="${esc(p.h)}"></td><td><input class="n" data-f="p" data-i="${i}" value="${esc(p.p)}"></td><td><button class="btn bad" data-rm="${i}" type="button">Remove</button></td></tr>`).join(""):'<tr><td class="note">No suggested places yet.</td></tr>';
+ $("ptable").querySelectorAll("input").forEach(el=>el.addEventListener("input",()=>{const p=cat.places[+el.dataset.i];p[el.dataset.f]=el.dataset.f==="p"?el.value.toUpperCase():el.value;setDirty(true)}));
+ $("ptable").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{cat.places.splice(+b.dataset.rm,1);setDirty(true);renderPlaces()});
+}
+$("addplace").onclick=()=>{cat.places.push({n:"",h:"",p:""});setDirty(true);renderPlaces()};
+$("p_add").onclick=()=>{let n=0,bad=[];
+ $("p_paste").value.split(/\n/).forEach(l=>{if(!l.trim())return;const p=l.split(",").map(x=>x.trim());let nick=p[0],h="",pc="";
+  if(p.length===2){pc=p[1]}else if(p.length>=3){h=p[1];pc=p[2]}else{bad.push(l);return}
+  if(!PC.test(pc)){bad.push(l);return}cat.places.push({n:nick,h,p:pc.toUpperCase()});n++});
+ if(n){setDirty(true);renderPlaces();$("p_paste").value=bad.join("\n")}
+ $("pmsg").textContent=n+" place(s) added"+(bad.length?". "+bad.length+" line(s) not understood and left in the box.":".");$("pmsg").className="msg "+(n?"ok":"err")};
+function renderRoutes(){
+ const nm=q=>q.home?"Home (each person's own)":(q.n||q.p);
+ $("rtable").innerHTML=cat.routes.length?`<tr><th>Name</th><th>Route</th><th>Return</th><th></th></tr>`+cat.routes.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${r.pts.map(q=>esc(nm(q)+(!q.home&&q.n&&q.p?" ("+q.p+")":""))).join(" &rarr; ")}</td><td>${r.ret===false?"no":(r.ign?"straight back":"yes")}</td><td><button class="btn bad" data-rm="${i}" type="button">Remove</button></td></tr>`).join(""):'<tr><td class="note">No starter routes yet.</td></tr>';
+ $("rtable").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{cat.routes.splice(+b.dataset.rm,1);setDirty(true);renderRoutes()});
+}
+function resolve(t){t=t.trim();if(/^home$/i.test(t))return{n:"Home",h:"",p:"",home:true};if(PC.test(t))return{n:"",h:"",p:t.toUpperCase()};const f=cat.places.find(p=>p.n.toLowerCase()===t.toLowerCase());return f?{n:f.n,h:f.h,p:f.p}:null}
+$("r_add").onclick=()=>{let n=0,bad=[];
+ $("r_paste").value.split(/\n/).forEach(l=>{if(!l.trim())return;const p=l.split("|").map(x=>x.trim());if(p.length<3){bad.push(l);return}
+  const from=resolve(p[1]),to=resolve(p[2]);const stops=(p[3]||"").split(";").map(x=>x.trim()).filter(Boolean).map(resolve);
+  if(!from||!to||stops.some(x=>!x)||stops.length>2){bad.push(l);return}
+  const yes=v=>/^y/i.test(v||"");cat.routes.push({name:p[0],pts:[from].concat(stops,[to]),ret:p[4]?yes(p[4]):true,ign:yes(p[5])});n++});
+ if(n){setDirty(true);renderRoutes();$("r_paste").value=bad.join("\n")}
+ $("rmsg").textContent=n+" route(s) added"+(bad.length?". "+bad.length+" line(s) not understood (check postcodes and nicknames) and left in the box.":".");$("rmsg").className="msg "+(n?"ok":"err")};
+
+/* ---------- publish, backup ---------- */
+$("publish").onclick=async()=>{
+ $("pubmsg").textContent="Publishing...";$("pubmsg").className="msg";
+ try{const out=await call("/v1/admin/catalog_put",{catalog:cat});cat=Object.assign({},out);setDirty(false);await loadAll();$("pubmsg").textContent="Published as version "+out.ver+". Phones pick it up within 30 minutes, or the next time they open the app.";$("pubmsg").className="msg ok"}
+ catch(e){$("pubmsg").textContent=e.message;$("pubmsg").className="msg err"}};
+$("exp").onclick=async()=>{try{const d=await call("/v1/admin/export");const b=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="myev-backup-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();$("bmsg").textContent="Backup downloaded.";$("bmsg").className="msg ok"}catch(e){$("bmsg").textContent=e.message;$("bmsg").className="msg err"}};
+$("impgo").onclick=()=>{try{const j=JSON.parse($("imp").value);const c=j.catalog||j;cat={suppliers:c.suppliers||[],places:c.places||[],routes:c.routes||[],fuel:c.fuel||{},announcement:c.announcement||"",ver:cat.ver};setDirty(true);renderAll();$("bmsg").textContent="Loaded into the editor. Press Publish changes to send it live.";$("bmsg").className="msg ok"}catch(e){$("bmsg").textContent="That is not a valid backup.";$("bmsg").className="msg err"}};
+window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
+
+if(KEY)unlock(KEY);
+})();
+</script>
+</body>
+</html>
