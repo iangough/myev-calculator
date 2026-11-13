@@ -217,7 +217,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="Type your region here"></div>
      </div>
      <div class="row" style="margin-top:10px"><button class="btn alt sm" id="usehome" type="button">Use home as the starting point</button><span class="note" id="homemsg"></span></div>
-     <p class="note">Home is the default starting point and is listed first in every "Saved place" list. It is kept on this device, and is separate from petrol prices.</p></div>
+     <p class="note">Home is the default starting point and is listed first in every "Saved place" list. It is kept on this device. Only the "cheapest petrol near home" button uses it, and sends just the location rounded to about 1 km.</p></div>
     <div class="card"><h2>Cars</h2>
      <p class="note" style="margin:0 0 6px">Miles per kWh. Figures marked "guess" are my estimates of real-world use. Overtype any of them and they become yours.</p>
      <div id="carlist"></div>
@@ -667,7 +667,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13b";
+const BUILD="2026-11-13c";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
