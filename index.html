@@ -248,6 +248,8 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <div class="card"><h2>Share journeys with family</h2>
      <p class="note" style="margin:0 0 8px" id="sharestat">Not sharing.</p>
      <div id="shareoff">
+      <label for="sharename">Group name (optional)</label>
+      <input id="sharename" maxlength="40" autocomplete="off" placeholder="Type a name here, for example Ian and Helene">
       <label for="sharecap">Who do you want to share with?</label>
       <select id="sharecap"><option value="2">One other person (a pair)</option><option value="3">A small group of 3 people</option><option value="4">A small group of 4 people</option><option value="5">A small group of 5 people</option><option value="6">A small group of 6 people</option><option value="7">A small group of 7 people</option><option value="8">A small group of 8 people</option><option value="9">A small group of 9 people</option><option value="10">A small group of 10 people</option></select>
       <div class="row" style="margin-top:8px"><button class="btn alt sm" id="sharestart" type="button">Start sharing and get a code</button></div>
@@ -255,6 +257,8 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div class="row"><input id="joincode" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="Type the 4 digits here" style="max-width:200px"><button class="btn alt sm" id="sharejoin" type="button">Join</button></div>
      </div>
      <div id="shareon" hidden>
+      <label for="gname">Group name</label>
+      <div class="row"><input id="gname" maxlength="40" autocomplete="off" placeholder="Type a group name here" style="max-width:280px"><button class="btn alt sm" id="gnamesave" type="button">Save group name</button></div>
       <div id="invitebox" hidden><div class="big4" id="invitecode"></div><p class="note" style="margin-top:0">Give this code to the person you are adding. It works for <span id="invitesecs"></span> and stops working once your group is full.</p><div class="row" style="margin:0 0 10px"><button class="btn sm" id="sendcode" type="button">Send code by WhatsApp</button></div></div>
       <div class="row"><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn alt sm" id="newinvite" type="button">New code</button><button class="btn warn sm" id="leavegrp" type="button">Leave this group</button><button class="btn warn sm" id="disbandgrp" type="button">End sharing for everyone</button></div>
      </div>
@@ -672,10 +676,11 @@ async function api(path,extra){
 }
 const ERR={already_sharing:"This device is already in a sharing group. Leave it first if you want to start or join another.",bad_code:"That code is not right, or it has run out (codes last 10 minutes). Ask for a new code.",group_full:"That group is already full, so nobody else can join it.",too_many_tries:"Too many wrong codes. Please wait an hour before trying again.",not_a_member:"This device is no longer part of the group.",slow_down:"Please wait a moment and try again.",full:"The sharing service is full at the moment.",bad_size:"Choose a group size between 2 and 10."};
 function syncMsg(t){$("syncstatus").textContent=t}
-function applyGroup(g){if(!g)return;S.sync.cap=g.cap;S.sync.members=g.members;if(g.invite){inviteExp=Date.now()+g.inviteSeconds*1000;$("invitecode").textContent=g.invite}else{inviteExp=0}save();renderShare()}
+function applyGroup(g){if(!g)return;S.sync.name=g.name||"";S.sync.cap=g.cap;S.sync.members=g.members;if(g.invite){inviteExp=Date.now()+g.inviteSeconds*1000;$("invitecode").textContent=g.invite}else{inviteExp=0}save();renderShare()}
 function renderShare(){
  const on=!!S.sync.space;$("shareoff").hidden=on;$("shareon").hidden=!on;
- $("sharestat").textContent=on?(S.sync.members>=S.sync.cap?"Sharing with "+(S.sync.members-1)+" other "+(S.sync.members-1===1?"person":"people")+". Your group is full ("+S.sync.members+" of "+S.sync.cap+"), so nobody else can join.":"Sharing: "+S.sync.members+" of "+S.sync.cap+" places filled. "+(S.sync.cap-S.sync.members)+" more can join."):"Not sharing. Start a group, or join one with a code.";
+ $("sharestat").textContent=on?((S.sync.name?"“"+S.sync.name+"”. ":"")+(S.sync.members>=S.sync.cap?"Sharing with "+(S.sync.members-1)+" other "+(S.sync.members-1===1?"person":"people")+". Your group is full ("+S.sync.members+" of "+S.sync.cap+"), so nobody else can join.":"Sharing: "+S.sync.members+" of "+S.sync.cap+" places filled. "+(S.sync.cap-S.sync.members)+" more can join.")):"Not sharing. Start a group, or join one with a code.";
+ if(on&&document.activeElement!==$("gname"))$("gname").value=S.sync.name||"";
  const open=on&&inviteExp>Date.now()&&S.sync.members<S.sync.cap;$("invitebox").hidden=!open;$("newinvite").hidden=!(on&&S.sync.members<S.sync.cap);
  if(open){const sec=Math.max(0,Math.round((inviteExp-Date.now())/1000));$("invitesecs").textContent=Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0")+" more minutes"}
 }
@@ -711,11 +716,12 @@ async function shareCall(path,extra,okFn){
   okFn(r.data)}
  catch(e){const up=await probe();syncMsg(up?"The sharing server is offline right now. Please try again later.":"No connection. Try again when you are online.");if(!up)setOnline(false)}
 }
-$("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");toast("✓ Sharing started. Now send the code.");syncNow(false)});
+$("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value,name:$("sharename").value.trim()},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");toast("✓ Sharing started. Now send the code.");syncNow(false)});
 $("sharejoin").onclick=()=>{const c=$("joincode").value.replace(/\D/g,"");if(c.length!==4){syncMsg("Type the 4 digits you were given.");return}
  shareCall("/v1/join",{code:c},d=>{S.sync.space=d.space;$("joincode").value="";applyGroup(d);syncMsg("Joined. Syncing now...");toast("✓ Joined the group");syncNow(false)})};
 $("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{applyGroup(d);syncMsg("Here is a new code.");toast("✓ New code made")});
 $("syncnow").onclick=()=>syncNow(true);
+$("gnamesave").onclick=()=>{const n=$("gname").value.trim();shareCall("/v1/rename",{space:S.sync.space,name:n},d=>{applyGroup(d);toast(n?"✓ Group named: "+n:"✓ Group name cleared")})};
 /* easy way in: a button at the top opens the sharing box; a WhatsApp link carries the code and fills the box */
 function openShare(){let d=$("sharestat").closest("details");while(d){d.open=true;d=d.parentElement&&d.parentElement.closest("details")}
  $("sharestat").closest(".card").scrollIntoView({behavior:"smooth",block:"start"});
@@ -741,7 +747,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-14d";
+const BUILD="2026-11-14e";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;

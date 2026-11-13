@@ -96,6 +96,7 @@ a{color:var(--accent)}
     <button class="btn alt" id="selidle" type="button">Select unused (no journeys, 30+ days quiet)</button>
    </div>
    <div class="tw"><table id="gtable"></table></div>
+   <div class="row" style="margin-top:10px"><input id="g_name" maxlength="40" placeholder="Type a new group name here" style="max-width:260px"><button class="btn alt" id="g_rename" type="button">Rename ticked group</button></div>
    <div class="row" style="margin-top:10px">
     <button class="btn alt" id="g_close" type="button">Close invite codes</button>
     <select id="g_cap" style="width:auto"></select><button class="btn alt" id="g_setcap" type="button">Set group size</button>
@@ -311,13 +312,15 @@ $("refresh").onclick=async()=>{try{await loadAll();$("pubmsg").textContent="Refr
 for(let i=2;i<=10;i++)$("g_cap").insertAdjacentHTML("beforeend",`<option value="${i}">${i} people</option>`);
 function renderGroups(){
  const G=ov.groups.slice().sort((a,b)=>(b.touched||0)-(a.touched||0));
- $("gtable").innerHTML=G.length?`<tr><th></th><th>Group</th><th>People</th><th>Created</th><th>Last sync</th><th>Journeys</th><th>Places</th><th>Invite open</th></tr>`+G.map(g=>`<tr><td><input type="checkbox" class="n" data-g="${g.id}" ${gsel[g.id]?"checked":""} aria-label="Select group ${g.id.slice(0,6)}"></td><td>${g.id.slice(0,6)}</td><td>${g.members} of ${g.cap}</td><td>${ago(g.created)}</td><td>${ago(g.touched)}</td><td>${g.trips}</td><td>${g.places}</td><td>${g.invite?"yes":"no"}</td></tr>`).join(""):'<tr><td class="note">No groups yet.</td></tr>';
+ $("gtable").innerHTML=G.length?`<tr><th></th><th>Group name</th><th>People</th><th>Created</th><th>Last sync</th><th>Journeys</th><th>Places</th><th>Invite open</th></tr>`+G.map(g=>`<tr><td><input type="checkbox" class="n" data-g="${g.id}" ${gsel[g.id]?"checked":""} aria-label="Select group ${esc(g.name||g.id.slice(0,6))}"></td><td>${g.name?"<b>"+esc(g.name)+"</b>":"<span class=\"note\">(not named)</span>"} <small class="note">${g.id.slice(0,6)}</small></td><td>${g.members} of ${g.cap}</td><td>${ago(g.created)}</td><td>${ago(g.touched)}</td><td>${g.trips}</td><td>${g.places}</td><td>${g.invite?"yes":"no"}</td></tr>`).join(""):'<tr><td class="note">No groups yet.</td></tr>';
  $("gtable").querySelectorAll("[data-g]").forEach(c=>c.onchange=()=>{gsel[c.dataset.g]=c.checked});
 }
 function picked(){return Object.keys(gsel).filter(k=>gsel[k]&&ov.groups.find(g=>g.id===k))}
 $("selall").onclick=()=>{ov.groups.forEach(g=>gsel[g.id]=true);renderGroups()};
 $("selnone").onclick=()=>{gsel={};renderGroups()};
 $("selidle").onclick=()=>{gsel={};ov.groups.forEach(g=>{if(!g.trips&&(Date.now()/1000-(g.touched||g.created||0))>30*86400)gsel[g.id]=true});renderGroups();$("gmsg").textContent=picked().length+" unused groups ticked.";$("gmsg").className="msg"};
+$("g_rename").onclick=async()=>{const ids=picked();if(ids.length!==1){$("gmsg").textContent="Tick exactly one group to rename it.";$("gmsg").className="msg err";return}
+ try{const n=$("g_name").value.trim();await call("/v1/admin/rename",{ids,name:n});$("gmsg").textContent=n?"Group renamed to “"+n+"”.":"Group name cleared.";$("gmsg").className="msg ok";$("g_name").value="";gsel={};await loadAll()}catch(e){$("gmsg").textContent=e.message;$("gmsg").className="msg err"}};
 const armed={};
 function arm(btn,label,fn){btn.onclick=async()=>{
  const ids=picked();if(!ids.length){$("gmsg").textContent="Tick at least one group first.";$("gmsg").className="msg err";return}
