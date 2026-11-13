@@ -387,7 +387,7 @@ function renderPts(){
  $("pts").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
  $("pts").querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
  $("pts").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{R().pts.splice(+b.dataset.rm,1);save();renderPts();calc();schedule(100);toast("✓ Stop removed")});
- $("usestops").checked=n>2;{const lb=$("ign").closest("label");if(lb)lb.hidden=!(n>2)}
+ $("usestops").checked=n>2;{const lb=$("ign").closest("label");if(lb)lb.style.display=n>2?"":"none"}
  $("addstop").hidden=n<3||n>=4;
  $("directrow").hidden=!(n>2&&R().ign&&R().ret);
 }
@@ -721,7 +721,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13u";
+const BUILD="2026-11-13v";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
