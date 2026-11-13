@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1830"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1830"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><script>setTimeout(function(){try{if(window.__ok||sessionStorage.getItem("rescued"))return;sessionStorage.setItem("rescued","1");var done=function(){location.reload()};var a=window.caches?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k)}))}):Promise.resolve();a.then(function(){return navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister()}))}):0}).then(done,done)}catch(e){}},6000)</script></head><body>
 <title>MyEV Calculator</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
@@ -173,6 +173,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <h2><span class="stepn">3</span><span id="rtitle">What it costs</span></h2>
     <div class="tiles"><div class="tile ev"><small>EV, cheap rate</small><span class="v" id="h_c1">-</span></div><div class="tile ev"><small>EV, normal rate</small><span class="v" id="h_c2">-</span></div><div class="tile pet"><small>Petrol car</small><span class="v" id="h_p">-</span></div></div>
     <div class="tblwrap"><table id="res"></table></div>
+    <div id="diagout" class="note" style="white-space:pre-wrap"></div>
     <div class="tblwrap" id="legres" style="margin-top:12px"></div>
     <p class="msg" id="saving"></p>
     <label for="jname" style="margin-top:8px">Journey name (optional)</label>
@@ -550,7 +551,7 @@ function waitWhy(){const P=R().pts,n=P.length;const miss=[];P.forEach((q,i)=>{if
  if(net.fails>0&&net.fails<3)return "The road-distance service has not answered yet. Trying again...";
  if(net.fails>=3)return "The road-distance service is not answering. Type the miles in the small box under the To point, or press Recalculate miles to try again.";
  return "Working out the driving miles... the cost appears here in a moment. If this stays here for more than about 15 seconds, press the button below."}
-function diagBox(){return `<div style="margin-top:8px"><button class="btn alt sm" id="diagbtn" type="button">Check what is wrong</button><div id="diagout" style="margin-top:6px;white-space:pre-wrap"></div></div>`}
+function diagBox(){return `<div style="margin-top:8px"><button class="btn alt sm" id="diagbtn" type="button">Check what is wrong</button></div>`}
 function calc(){
  const car=carNow();if(!car)return;
  const P=R().pts,n=P.length,L=legMiles();
@@ -719,7 +720,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13z";
+const BUILD="2026-11-14a";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -940,7 +941,7 @@ function init(){updatePlaces();
  fillSelects();loadCar();loadSupplier();loadFuel();loadSet();renderCars();renderSups();renderTrips();renderPts();renderEdit();refreshLegs();schedule(400);renderCatalogUI();
 }
 const gotShared=loadShared();
-init();
+init();window.__ok=1;
 renderShare();renderNet();probe().then(ok=>{setOnline(ok);if(ok)fetchCatalog()});if(S.sync.space)scheduleSync();regSW();
 if(gotShared){$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";S.welcomed=true;$("welcome").hidden=true}
 })();
