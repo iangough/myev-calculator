@@ -276,9 +276,17 @@ applyTheme(tv);document.getElementById("theme").value=tv;
 document.getElementById("theme").onchange=()=>{tv=document.getElementById("theme").value;try{localStorage.setItem("myev-theme",tv)}catch(e){}applyTheme(tv)};
 const uid=()=>Math.random().toString(36).slice(2,9);
 /* small confirmation message at the bottom of the screen, so people always see that something happened */
-let toastT=0;function toast(msg,bad){let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");t.setAttribute("aria-live","polite");
- t.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:98;max-width:92vw;padding:12px 18px;border-radius:999px;font-size:16px;font-weight:600;box-shadow:0 6px 22px rgba(0,0,0,.4);transition:opacity .2s;opacity:0;pointer-events:none;text-align:center";document.body.appendChild(t)}
- t.style.background=bad?"#b3261e":"#1f7a4d";t.style.color="#fff";t.textContent=msg;t.style.opacity="1";clearTimeout(toastT);toastT=setTimeout(()=>{t.style.opacity="0"},2600)}
+let toastT=0,lastToast=0;function toast(msg,bad){let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");t.setAttribute("aria-live","polite");
+ t.style.cssText="position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:9999;max-width:92vw;padding:14px 20px;border-radius:18px;font-size:18px;font-weight:600;box-shadow:0 6px 22px rgba(0,0,0,.4);transition:opacity .2s;opacity:0;pointer-events:none;text-align:center";document.body.appendChild(t)}
+ t.style.background=bad?"#b3261e":"#1f7a4d";t.style.color="#fff";t.textContent=msg;lastToast=Date.now();t.style.opacity="1";clearTimeout(toastT);toastT=setTimeout(()=>{t.style.opacity="0"},4200)}
+/* any setting that is changed gets a confirmation, unless a specific one was already shown */
+document.addEventListener("change",e=>{const el=e.target;if(!el||!el.tagName||!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))return;
+ setTimeout(()=>{if(Date.now()-lastToast<900)return;
+  if(["joincode","jname","sharecap","tripsel","starter","w_pc","w_nick","w_house","w_car"].includes(el.id)||el.closest("#pts,#welcome"))return;
+  if(/make and model|search/i.test(el.placeholder||"")||el.type==="search")return;
+  let lab="";try{lab=el.labels&&el.labels[0]?el.labels[0].textContent:(el.getAttribute("aria-label")||"")}catch(x){}
+  lab=lab.replace(/\s+/g," ").trim().slice(0,40);
+  toast(el.type==="checkbox"?"✓ "+(lab||"Option")+": "+(el.checked?"on":"off"):"✓ Saved"+(lab?": "+lab:""))},80)});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const gbp=v=>"£"+v.toFixed(2);
 const num=id=>parseFloat($(id).value)||0;
@@ -681,10 +689,11 @@ async function syncNow(manual){
   const r=await api("/v1/sync",{space:S.sync.space,trips:S.trips,places:dropHomePlaces(S.places),tomb:S.tomb,ptomb:S.ptomb});
   if(r.status===403){S.sync.space="";S.sync.cap=0;S.sync.members=0;save();renderShare();syncMsg(ERR.not_a_member+" Your journeys are still on this device.");syncing=false;return}
   if(!r.ok)throw new Error("server "+r.status);
-  const j=r.data;S.trips=Array.isArray(j.trips)?j.trips:S.trips;S.places=j.places&&typeof j.places==="object"?dropHomePlaces(j.places):S.places;S.tomb=j.tomb||S.tomb;S.ptomb=j.ptomb||S.ptomb;
+  const had=new Set(S.trips.map(x=>x.id));const j=r.data;S.trips=Array.isArray(j.trips)?j.trips:S.trips;const fresh=S.trips.filter(x=>!had.has(x.id)).length;S.places=j.places&&typeof j.places==="object"?dropHomePlaces(j.places):S.places;S.tomb=j.tomb||S.tomb;S.ptomb=j.ptomb||S.ptomb;
   net.syncDown=false;net.syncFails=0;net.lastSync=Date.now();hideRetry();
   save();renderTrips();updatePlaces();renderPts();applyGroup(j.group);
   syncMsg("Synced "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+". "+S.trips.length+" journeys and "+Object.keys(S.places).length+" saved places shared.");
+  if(fresh)toast("✓ "+fresh+" new journey"+(fresh>1?"s":"")+" from your group");else if(manual)toast("✓ Synced with your group");
  }catch(e){
   net.syncFails++;const up=await probe();
   if(up){net.syncDown=true;syncMsg("The sharing server is offline right now. Everything else works, and your changes will sync later.")}
@@ -702,10 +711,10 @@ async function shareCall(path,extra,okFn){
   okFn(r.data)}
  catch(e){const up=await probe();syncMsg(up?"The sharing server is offline right now. Please try again later.":"No connection. Try again when you are online.");if(!up)setOnline(false)}
 }
-$("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");syncNow(false)});
+$("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");toast("✓ Sharing started. Now send the code.");syncNow(false)});
 $("sharejoin").onclick=()=>{const c=$("joincode").value.replace(/\D/g,"");if(c.length!==4){syncMsg("Type the 4 digits you were given.");return}
  shareCall("/v1/join",{code:c},d=>{S.sync.space=d.space;$("joincode").value="";applyGroup(d);syncMsg("Joined. Syncing now...");toast("✓ Joined the group");syncNow(false)})};
-$("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{applyGroup(d);syncMsg("Here is a new code.")});
+$("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{applyGroup(d);syncMsg("Here is a new code.");toast("✓ New code made")});
 $("syncnow").onclick=()=>syncNow(true);
 /* easy way in: a button at the top opens the sharing box; a WhatsApp link carries the code and fills the box */
 function openShare(){let d=$("sharestat").closest("details");while(d){d.open=true;d=d.parentElement&&d.parentElement.closest("details")}
@@ -720,9 +729,9 @@ function joinLink(){const m=/[?&]join=(\d{4})/.exec(location.search);if(!m)retur
  openShare();$("joincode").value=m[1];syncMsg("The code "+m[1]+" is in the box. Tap Join.");toast("Code filled in. Tap Join.")}
 let leaveArm=0,endArm=0;
 $("leavegrp").onclick=()=>{if(!leaveArm){leaveArm=1;$("leavegrp").textContent="Press again to leave";setTimeout(()=>{leaveArm=0;$("leavegrp").textContent="Leave this group"},4000);return}
- leaveArm=0;$("leavegrp").textContent="Leave this group";shareCall("/v1/leave",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("You left the group. Your journeys stay on this device.")})};
+ leaveArm=0;$("leavegrp").textContent="Leave this group";shareCall("/v1/leave",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("You left the group. Your journeys stay on this device.");toast("✓ You left the group")})};
 $("disbandgrp").onclick=()=>{if(!endArm){endArm=1;$("disbandgrp").textContent="Press again: this removes everyone";setTimeout(()=>{endArm=0;$("disbandgrp").textContent="End sharing for everyone"},4000);return}
- endArm=0;$("disbandgrp").textContent="End sharing for everyone";shareCall("/v1/disband",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("Sharing ended for everyone. Each person keeps their own journeys.")})};
+ endArm=0;$("disbandgrp").textContent="End sharing for everyone";shareCall("/v1/disband",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("Sharing ended for everyone. Each person keeps their own journeys.");toast("✓ Sharing ended for everyone")})};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)scheduleSync()});
 setInterval(()=>{if(!document.hidden)scheduleSync()},90000);
 /* ---------- share the app itself ---------- */
@@ -732,7 +741,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-14c";
+const BUILD="2026-11-14d";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -760,8 +769,8 @@ function renderPlaces(){
 function updatePlaces(){renderPlaces();$("places").innerHTML=Object.values(S.places).map(p=>`<option value="${esc(p.n)}"></option>`).join("")}
 function rememberPlaces(){R().pts.forEach(q=>{if(q.n&&q.n.trim()&&!isHomeNick(q.n)&&q.p.trim()&&validPc(q))S.places[q.n.trim().toLowerCase()]={n:q.n.trim(),h:q.h,p:q.p,u:Date.now()}});updatePlaces();scheduleSync()}
 function renderEdit(){const t=editingId&&S.trips.find(x=>x.id===editingId);$("update").hidden=!t;$("editrow").hidden=!t;if(t)$("edittxt").textContent="Editing: "+(t.name||(t.from+" to "+t.to))}
-$("save").onclick=()=>{calc();if(!last){$("ok").textContent="Enter a route first";setTimeout(()=>$("ok").textContent="",2000);return}rememberPlaces();const t=Object.assign({id:uid(),u:Date.now()},last);S.trips.unshift(t);S.trips=S.trips.slice(0,500);editingId=t.id;save();renderTrips();renderEdit();scheduleSync();$("ok").textContent="Saved as a new journey";toast("✓ Journey saved");setTimeout(()=>$("ok").textContent="",2500)};
-$("update").onclick=()=>{calc();if(!last)return;const t=S.trips.find(x=>x.id===editingId);if(!t)return;rememberPlaces();Object.assign(t,last,{id:t.id,fav:t.fav,u:Date.now()});save();renderTrips();renderEdit();scheduleSync();$("ok").textContent="Journey updated";setTimeout(()=>$("ok").textContent="",2500)};
+$("save").onclick=()=>{calc();if(!last){$("ok").textContent="Enter a route first";setTimeout(()=>$("ok").textContent="",2000);return}rememberPlaces();const t=Object.assign({id:uid(),u:Date.now()},last);S.trips.unshift(t);S.trips=S.trips.slice(0,500);editingId=t.id;save();renderTrips();renderEdit();scheduleSync();$("ok").textContent="Saved as a new journey";toast("✓ Journey saved");try{document.activeElement.blur()}catch(e){}setTimeout(()=>$("ok").textContent="",2500)};
+$("update").onclick=()=>{calc();if(!last)return;const t=S.trips.find(x=>x.id===editingId);if(!t)return;rememberPlaces();Object.assign(t,last,{id:t.id,fav:t.fav,u:Date.now()});save();renderTrips();renderEdit();scheduleSync();$("ok").textContent="Journey updated";toast("✓ Journey updated");try{document.activeElement.blur()}catch(e){}setTimeout(()=>$("ok").textContent="",2500)};
 $("stopedit").onclick=()=>{editingId=null;renderEdit()};
 $("copy").onclick=()=>{calc();if(!last)return;const t=textOut();
  const done=()=>{toast("✓ Copied for WhatsApp");$("ok").textContent="Copied";setTimeout(()=>$("ok").textContent="",2000)};
@@ -795,7 +804,7 @@ function renderTrips(){
     <div class="row" style="margin-top:10px"><button class="btn alt sm" id="favtrip" type="button">${t.fav?"★ Remove from favourites":"☆ Add to favourites"}</button>${t.pts?`<button class="btn alt sm" id="loadtrip" type="button">Load and edit</button>`:""}<button class="btn warn sm" id="deltrip" type="button">Delete this journey</button></div>`;
    $("favtrip").onclick=()=>{t.fav=!t.fav;t.u=Date.now();save();renderTrips();scheduleSync();toast(t.fav?"✓ Added to favourites":"✓ Removed from favourites")};
    $("deltrip").onclick=()=>{S.tomb[t.id]=Date.now();S.trips=S.trips.filter(x=>x.id!==t.id);save();renderTrips();scheduleSync();toast("✓ Journey deleted")};
-   if($("loadtrip"))$("loadtrip").onclick=()=>{R().pts=t.pts.map(q=>({h:q.h,p:q.p,n:q.n||""}));R().ret=!!t.ret;R().ign=!!t.ign;R().parked=[];
+   if($("loadtrip"))$("loadtrip").onclick=()=>{toast("✓ Journey loaded into section 1");R().pts=t.pts.map(q=>({h:q.h,p:q.p,n:q.n||""}));R().ret=!!t.ret;R().ign=!!t.ign;R().parked=[];
     restoreLegs(R().pts,t.legs,t.direct,t.miles,t.ret);
     const c=S.cars.find(x=>x.name===t.car);if(c){S.sel.car=c.id;$("car").value=c.id;loadCar()}
     if(t.season){S.sel.season=t.season;$("season").value=t.season}
@@ -807,7 +816,7 @@ function renderTrips(){
 }
 let clearArm=false;
 $("clear").onclick=()=>{if(!clearArm){clearArm=true;$("clear").textContent="Press again to delete all";setTimeout(()=>{clearArm=false;$("clear").textContent="Clear all journeys"},4000);return}
- S.trips.forEach(t=>{S.tomb[t.id]=Date.now()});S.trips=[];save();clearArm=false;$("clear").textContent="Clear all journeys";renderTrips()};
+ S.trips.forEach(t=>{S.tomb[t.id]=Date.now()});S.trips=[];save();clearArm=false;$("clear").textContent="Clear all journeys";renderTrips();toast("✓ All journeys cleared")};
 
 /* ---------- settings ---------- */
 function renderCars(keepFocus){
@@ -821,7 +830,7 @@ function renderCars(keepFocus){
   snap(c);c[f]=f==="name"?i.value:(parseFloat(i.value)||0);c.src="mine";c.edited=true;save();if(f!=="name")renderDef();
   const o=$("car").value;$("car").innerHTML=S.cars.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");$("car").value=o;
   if(c.id===S.sel.car)loadCar();calc()}));
- $("carlist").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{if(S.cars.length<2)return;S.cars=S.cars.filter(c=>c.id!==b.dataset.rm);save();fillSelects();loadCar();renderCars();calc()});
+ $("carlist").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{if(S.cars.length<2)return;S.cars=S.cars.filter(c=>c.id!==b.dataset.rm);save();fillSelects();loadCar();renderCars();calc();toast("✓ Car removed")});
 }
 function pushCar(c){S.cars.push(Object.assign({id:uid(),src:"guess",def:{sum:c.sum,nor:c.nor,win:c.win}},c));S.sel.car=S.cars[S.cars.length-1].id;save();fillSelects();loadCar();renderCars();calc()}
 const FACT={W:{sum:0.74,nor:0.66,win:0.56},E:{sum:1.05,nor:0.95,win:0.75}}; /* my estimates of real use from each source's published figure (W = WLTP, E = EPA, which already includes charging losses): always overtype */
@@ -875,9 +884,9 @@ function renderSups(){
   c[f]=(f==="name"||f==="note")?i.value:(parseFloat(i.value)||0);c.mine=true;save();
   const o=$("sup").value;$("sup").innerHTML=S.suppliers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");$("sup").value=o;
   if(c.id===S.sel.sup)loadSupplier();calc()}));
- $("suplist").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{if(S.suppliers.length<2)return;S.suppliers=S.suppliers.filter(c=>c.id!==b.dataset.rm);save();renderSups();fillSelects();loadSupplier();calc()});
+ $("suplist").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{if(S.suppliers.length<2)return;S.suppliers=S.suppliers.filter(c=>c.id!==b.dataset.rm);save();renderSups();fillSelects();loadSupplier();calc();toast("✓ Supplier removed")});
 }
-$("addsup").onclick=()=>{S.suppliers.push({id:uid(),name:"New supplier",cheap:8,normal:26.3,note:""});save();renderSups();fillSelects();};
+$("addsup").onclick=()=>{S.suppliers.push({id:uid(),name:"New supplier",cheap:8,normal:26.3,note:""});save();renderSups();fillSelects();toast("✓ Supplier added. Rename it and set the rates.");};
 function fuelNote(){$("fuelnote").textContent=S.fuel.mine?"You set this price yourself, so it stays as you typed it.":"This is the standard price (from the MyEV service when it is reachable). Overtype it to use your own."}
 function loadSet(){$("sppl").value=S.fuel.ppl;$("sdate").value=S.fuel.date;$("smpg").value=S.fuel.mpg;$("loss").value=S.fuel.loss||0;
  $("hnick").value=S.home.nick||"Home";$("hhouse").value=S.home.house||"";$("hpc").value=S.home.postcode;$("hreg").value=S.home.region;fuelNote()}
@@ -897,7 +906,7 @@ $("usehome").onclick=()=>{if(!S.home.postcode.trim()){$("homemsg").textContent="
 $("usestd").onclick=()=>{S.fuel.mine=false;const c=S.catalog;if(c&&c.fuel&&+c.fuel.ppl>0){S.fuel.ppl=+c.fuel.ppl;if(c.fuel.date)S.fuel.date=c.fuel.date}else{S.fuel.ppl=155.2;S.fuel.date="11 Nov 2026 (Andover average E10)"}save();loadFuel();loadSet();calc();toast("✓ Standard petrol price applied")};
 let rArm=false;
 $("reset").onclick=()=>{if(!rArm){rArm=true;$("reset").textContent="Press again to reset";setTimeout(()=>{rArm=false;$("reset").textContent="Reset tariffs and fuel to defaults"},4000);return}
- const d=DEFAULTS();S.suppliers=d.suppliers;S.fuel=d.fuel;S.catVer=null;save();rArm=false;$("reset").textContent="Reset tariffs and fuel to defaults";$("resetmsg").textContent="Tariffs and fuel reset. Cars and journeys kept.";init();applyCatalog()};
+ const d=DEFAULTS();S.suppliers=d.suppliers;S.fuel=d.fuel;S.catVer=null;save();rArm=false;$("reset").textContent="Reset tariffs and fuel to defaults";$("resetmsg").textContent="Tariffs and fuel reset. Cars and journeys kept.";init();applyCatalog();toast("✓ Tariffs and fuel reset")};
 
 /* ---------- welcome ---------- */
 function showWelcome(){$("welcome").hidden=!!S.welcomed;if(!S.welcomed){$("w_nick").value=S.home.nick||"Home";$("w_house").value=S.home.house||"";$("w_pc").value=S.home.postcode||""}}
@@ -907,7 +916,7 @@ $("w_save").onclick=()=>{const pc=$("w_pc").value.trim().toUpperCase();
  if(pc){R().pts[0]={h:S.home.house,p:pc,n:S.home.nick}}
  save();$("welcome").hidden=true;loadSet();renderPts();refreshLegs();schedule(100);
  $("findmsg").textContent=pc?"Home saved as your starting point. Now type where you are going in the To box.":"";toast("✓ Saved");};
-$("w_skip").onclick=()=>{S.welcomed=true;save();$("welcome").hidden=true};
+$("w_skip").onclick=()=>{S.welcomed=true;save();$("welcome").hidden=true;toast("Skipped. You can set your home later in Settings.")};
 
 /* ---------- standard tariffs, petrol price, places and routes from the MyEV service ---------- */
 function applyCatalog(){
@@ -939,7 +948,7 @@ function sendAck(ev){try{const c=S.catalog||{};if(!c.nid)return;if(!S.did){S.did
 $("bannerx").onclick=()=>{S.dismissed=String((S.catalog&&S.catalog.announcement)||"").trim();save();$("banner").hidden=true;sendAck("dismissed")};
 $("starter").onchange=()=>{const r=((S.catalog&&S.catalog.routes)||[])[+$("starter").value];if(!r||!Array.isArray(r.pts)||r.pts.length<2)return;
  R().pts=r.pts.slice(0,4).map(q=>q.home?{h:S.home.house||"",p:S.home.postcode||"",n:S.home.nick||"Home"}:{h:String(q.h||""),p:String(q.p||"").toUpperCase(),n:String(q.n||"")});R().ret=r.ret!==false;R().ign=!!r.ign;R().parked=[];editingId=null;
- $("jname").value=r.name||"";save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();renderEdit();schedule(100);$("starter").value=""};
+ $("jname").value=r.name||"";save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();renderEdit();schedule(100);$("starter").value="";toast("✓ Route loaded"+(r.name?": "+r.name:""))};
 async function fetchCatalog(){
  if(!net.online)return;
  try{const r=await tfetch(SYNC_URL+"/v1/catalog",8000);if(!r.ok)return;const c=await r.json();if(c&&typeof c==="object"&&!Array.isArray(c)){S.catalog=c;save();applyCatalog()}}catch(e){}
