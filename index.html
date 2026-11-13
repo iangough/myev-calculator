@@ -92,7 +92,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
  <div class="row" style="justify-content:space-between"><h1>MyEV Calculator</h1>
   <label class="chk" for="theme" style="text-transform:none">Theme <select id="theme" style="width:auto"><option value="auto">Auto (system)</option><option value="dark">Dark blue</option><option value="light">Light blue</option></select></label></div>
  <p class="lead">What does a journey cost in an electric car, compared with petrol?</p>
- <div class="netbar" id="netbar" role="status" aria-live="polite"><span class="dot" id="netdot"></span><span id="nettext">Checking connection...</span><button class="btn alt sm" id="netinfo" type="button">What works offline?</button></div>
+ <div class="netbar" id="netbar" role="status" aria-live="polite"><span class="dot" id="netdot"></span><span id="nettext">Checking connection...</span><button class="btn alt sm" id="netinfo" type="button">What works offline?</button><button class="btn sm" id="sharetop" type="button">Share journeys or join with a code</button></div>
  <div class="card" id="retrybox" hidden>
   <h2>Are you offline?</h2>
   <p class="note" style="margin:0 0 8px" id="retrytext">No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.</p>
@@ -255,7 +255,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div class="row"><input id="joincode" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="Type the 4 digits here" style="max-width:200px"><button class="btn alt sm" id="sharejoin" type="button">Join</button></div>
      </div>
      <div id="shareon" hidden>
-      <div id="invitebox" hidden><div class="big4" id="invitecode"></div><p class="note" style="margin-top:0">Give this code to the person you are adding. It works for <span id="invitesecs"></span> and stops working once your group is full.</p></div>
+      <div id="invitebox" hidden><div class="big4" id="invitecode"></div><p class="note" style="margin-top:0">Give this code to the person you are adding. It works for <span id="invitesecs"></span> and stops working once your group is full.</p><div class="row" style="margin:0 0 10px"><button class="btn sm" id="sendcode" type="button">Send code by WhatsApp</button></div></div>
       <div class="row"><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn alt sm" id="newinvite" type="button">New code</button><button class="btn warn sm" id="leavegrp" type="button">Leave this group</button><button class="btn warn sm" id="disbandgrp" type="button">End sharing for everyone</button></div>
      </div>
      <p class="msg" id="syncstatus"></p>
@@ -704,9 +704,20 @@ async function shareCall(path,extra,okFn){
 }
 $("sharestart").onclick=()=>shareCall("/v1/create",{cap:+$("sharecap").value},d=>{S.sync.space=d.space;applyGroup(d);syncMsg("Sharing started. Give the code to the person you are adding.");syncNow(false)});
 $("sharejoin").onclick=()=>{const c=$("joincode").value.replace(/\D/g,"");if(c.length!==4){syncMsg("Type the 4 digits you were given.");return}
- shareCall("/v1/join",{code:c},d=>{S.sync.space=d.space;$("joincode").value="";applyGroup(d);syncMsg("Joined. Syncing now...");syncNow(false)})};
+ shareCall("/v1/join",{code:c},d=>{S.sync.space=d.space;$("joincode").value="";applyGroup(d);syncMsg("Joined. Syncing now...");toast("✓ Joined the group");syncNow(false)})};
 $("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{applyGroup(d);syncMsg("Here is a new code.")});
 $("syncnow").onclick=()=>syncNow(true);
+/* easy way in: a button at the top opens the sharing box; a WhatsApp link carries the code and fills the box */
+function openShare(){let d=$("sharestat").closest("details");while(d){d.open=true;d=d.parentElement&&d.parentElement.closest("details")}
+ $("sharestat").closest(".card").scrollIntoView({behavior:"smooth",block:"start"});
+ setTimeout(()=>{if(!S.sync.space)try{$("joincode").focus()}catch(e){}},600)}
+$("sharetop").onclick=openShare;
+$("sendcode").onclick=()=>{const code=($("invitecode").textContent||"").trim();if(!/^\d{4}$/.test(code)){toast("No code yet. Press New code first.");return}
+ const msg="Join my MyEV journeys. Tap this link, check the 4 digits are in the box, then tap Join. The code works for 10 minutes. https://iangough.github.io/myev-calculator/?join="+code+" (code "+code+")";
+ window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");toast("WhatsApp is opening with the code ready to send")};
+function joinLink(){const m=/[?&]join=(\d{4})/.exec(location.search);if(!m)return;try{history.replaceState(null,"",location.pathname)}catch(e){}
+ if(S.sync.space){toast("This device is already sharing");return}
+ openShare();$("joincode").value=m[1];syncMsg("The code "+m[1]+" is in the box. Tap Join.");toast("Code filled in. Tap Join.")}
 let leaveArm=0,endArm=0;
 $("leavegrp").onclick=()=>{if(!leaveArm){leaveArm=1;$("leavegrp").textContent="Press again to leave";setTimeout(()=>{leaveArm=0;$("leavegrp").textContent="Leave this group"},4000);return}
  leaveArm=0;$("leavegrp").textContent="Leave this group";shareCall("/v1/leave",{space:S.sync.space},()=>{S.sync.space="";S.sync.cap=0;S.sync.members=0;inviteExp=0;save();renderShare();syncMsg("You left the group. Your journeys stay on this device.")})};
@@ -721,7 +732,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-14b";
+const BUILD="2026-11-14c";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -942,7 +953,7 @@ function init(){updatePlaces();
  fillSelects();loadCar();loadSupplier();loadFuel();loadSet();renderCars();renderSups();renderTrips();renderPts();renderEdit();refreshLegs();schedule(400);renderCatalogUI();
 }
 const gotShared=loadShared();
-init();window.__ok=1;
+init();window.__ok=1;try{joinLink()}catch(e){}
 renderShare();renderNet();probe().then(ok=>{setOnline(ok);if(ok)fetchCatalog()});if(S.sync.space)scheduleSync();regSW();
 if(gotShared){$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";S.welcomed=true;$("welcome").hidden=true}
 })();
