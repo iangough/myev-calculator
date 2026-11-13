@@ -143,7 +143,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     </div>
     <div class="meta" id="directrow" hidden>Direct road miles, last point back to first: <input id="direct" type="number" step="0.1" min="0"></div>
     <p class="msg" id="findmsg"></p>
-    <p class="note">Road miles by the fastest driving route, not straight-line. The small boxes under each point can be overtyped.</p>
+    <p class="note">Road miles are the fastest driving route, never straight-line. They are worked out for you and locked; you can only type them yourself when you are offline or the road service cannot be reached.</p>
    </div>
 
    <div class="card">
@@ -368,7 +368,7 @@ function renderPts(){
  const catOpt=((S.catalog&&S.catalog.places)||[]).map((p,i)=>`<option value="cat:${i}">${esc(p.n)} (${esc(p.p)})</option>`).join("");
  const placeOpts=homeOpt+Object.values(S.places).map(p=>`<option value="${esc(p.n.toLowerCase())}">${esc(p.n)} (${esc(p.p)})</option>`).join("")+(catOpt?`<optgroup label="Suggested places">${catOpt}</optgroup>`:"");
  $("pts").innerHTML=P.map((q,i)=>{
-  const meta=i===0?`<div class="meta">Starting point</div>`:`<div class="meta">Road miles from ${esc(nm(i-1,n))}: <input data-leg="${i-1}" type="number" step="0.1" min="0" value="${legMiles()[i-1]||""}" aria-label="Road miles from previous point"> mi</div>`;
+  const meta=i===0?`<div class="meta">Starting point</div>`:`<div class="meta">Road miles from ${esc(nm(i-1,n))}: <input data-leg="${i-1}" type="number" step="0.1" min="0" value="${legMiles()[i-1]||""}" aria-label="Road miles from previous point"${legLocked()?" readonly":""}> mi</div>`;
   return `<div class="pt" data-i="${i}"><div class="pthead"><span class="badge">${role(i,n)}</span>
    <span class="ptbtns"><button class="btn alt sm" data-up="${i}" type="button" ${i===0?"disabled":""} aria-label="Move up">&#9650; Up</button>
    <button class="btn alt sm" data-dn="${i}" type="button" ${i===n-1?"disabled":""} aria-label="Move down">&#9660; Down</button>
@@ -391,8 +391,10 @@ function renderPts(){
  $("addstop").hidden=n<3||n>=4;
  $("directrow").hidden=!(n>2&&R().ign&&R().ret);
 }
+/* the miles come from the fastest driving route, so the boxes are locked while that lookup works; they open up only when offline or when the lookup keeps failing */
+const legLocked=()=>net.online&&net.fails<3;
 function refreshLegs(){ /* update the small mile boxes without rebuilding the rows (keeps typing focus) */
- const L=legMiles();$("pts").querySelectorAll("input[data-leg]").forEach(el=>{if(document.activeElement!==el)el.value=L[+el.dataset.leg]||""});
+ const L=legMiles();$("pts").querySelectorAll("input[data-leg]").forEach(el=>{el.readOnly=legLocked();if(document.activeElement!==el)el.value=L[+el.dataset.leg]||""});$("direct").readOnly=legLocked();
  const d=directMiles();if(document.activeElement!==$("direct"))$("direct").value=d||"";calc();
 }
 function move(i,d){const P=R().pts,j=i+d;if(j<0||j>=P.length)return;[P[i],P[j]]=[P[j],P[i]];save();renderPts();refreshLegs();schedule(100)}
@@ -481,7 +483,7 @@ function mapsLinkReturn(){const P=R().pts.map(addr).reverse();return gmaps(P[0],
 const net={online:navigator.onLine!==false,since:navigator.onLine===false?Date.now():0,fails:0,pausedUntil:0,syncDown:false,syncFails:0,retryTimer:null,pausedTimer:null,lastSync:0};
 const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new TypeError("timeout")),ms))]);
 async function probe(){try{await tfetch("ping.txt?t="+Date.now(),5000);return true}catch(e){return false}}
-function setOnline(v){
+function setOnline(v){setTimeout(()=>{try{refreshLegs()}catch(e){}},0);
  if(v&&!net.online){net.online=true;net.since=0;net.fails=0;net.syncFails=0;net.pausedUntil=0;hideRetry();schedule(200);scheduleSync();fetchCatalog()}
  else if(!v&&net.online){net.online=false;net.since=Date.now()}
  renderNet();
@@ -508,7 +510,7 @@ window.addEventListener("online",async()=>setOnline(await probe()));
 setInterval(renderNet,15000);
 setInterval(async()=>{if(document.hidden||net.pausedUntil>Date.now())return;setOnline(navigator.onLine!==false&&await probe())},20000);
 function lookupFailed(){
- net.fails++;
+ net.fails++;setTimeout(()=>{try{refreshLegs()}catch(e){}},0);
  if(net.fails<3){$("findmsg").textContent="No answer from the road-mile services (try "+net.fails+" of 3). Trying again in 10 seconds...";clearTimeout(net.retryTimer);net.retryTimer=setTimeout(()=>ensureRoute(true),10000)}
  else{$("findmsg").textContent="Still no answer. Type the miles in the small boxes if you know them.";showRetry("No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.")}
 }
@@ -528,7 +530,7 @@ async function ensureRoute(force){
   for(const [a,b] of need){
    let sl=0;const m=await withTimeout((async()=>{const ga=await geocode(a),gb=await geocode(b);sl=hav(ga,gb);[ga,gb].forEach(x=>{if(x.note&&geoNotes.indexOf(x.note)<0)geoNotes.push(x.note)});return roadMiles(ga,gb)})(),30000);
    R().cache[pairKey(a,b)]=miles1(m);
-   if(m>sl*2.2+4){warnLeg=`Check ${a.p.toUpperCase()} to ${b.p.toUpperCase()}: the road distance (${miles1(m)} mi) is much longer than the straight-line distance (${miles1(sl)} mi). A house number may have been matched to the wrong place: try removing it, or overtype the miles in the small box.`}
+   if(m>sl*2.2+4){warnLeg=`Check ${a.p.toUpperCase()} to ${b.p.toUpperCase()}: the road distance (${miles1(m)} mi) is much longer than the straight-line distance (${miles1(sl)} mi). A house number may have been matched to the wrong place: check the postcodes and try removing the house name or number.`}
    const keys=Object.keys(R().cache);if(keys.length>300)delete R().cache[keys[0]];
    save();refreshLegs();
   }
@@ -560,7 +562,7 @@ function calc(){
  const miles=out+back;
  if(!(miles>0)){
   $("maplink").href=mapsLink();$("maplink2").href=mapsLinkReturn();$("maplink2").hidden=!R().ret;
-  $("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:var(--mute)">Type the From and To postcodes (or the miles in the small boxes) and the cost appears here.</td></tr>';
+  $("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:var(--mute)">Type the From and To postcodes and the cost appears here.</td></tr>';
   $("legres").innerHTML="";$("saving").textContent="";["h_c1","h_c2","h_p"].forEach(x=>$(x).textContent="-");last=null;return}
  const t1=num("cheap")/100,t2=num("norm")/100,loss=1+(S.fuel.loss||0)/100;
  const sel=$("season").value;
@@ -719,7 +721,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13s";
+const BUILD="2026-11-13t";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
