@@ -59,10 +59,10 @@ a{color:var(--accent)}
 
  <div class="card" id="login">
   <h2>Unlock</h2>
-  <label for="key">Admin key</label>
-  <div class="row"><input id="key" type="password" autocomplete="off" placeholder="Type or paste your admin key here" style="max-width:420px"><button class="btn" id="unlock" type="button">Unlock</button></div>
+  <label for="key">Admin PIN (4 digits)</label>
+  <div class="row"><input id="key" type="password" inputmode="numeric" autocomplete="off" placeholder="Type your 4-digit PIN here" style="max-width:420px"><button class="btn" id="unlock" type="button">Unlock</button></div>
   <p class="msg" id="loginmsg"></p>
-  <p class="note">The key is checked by your Synology and is kept only in this browser tab. Five wrong tries lock the console for an hour.</p>
+  <p class="note">The PIN is checked by your Synology and is kept only in this browser tab. A few wrong tries lock the console for an hour.</p>
  </div>
 
  <div id="app" hidden>
@@ -196,7 +196,7 @@ const DEFSUP=[
  {id:"bg",name:"British Gas EV Power",cheap:9.5,normal:26.3,note:"Varies by region. Peak rate not confirmed."},
  {id:"ovo",name:"OVO Charge Anytime",cheap:13.3,normal:13.3,note:"Flat rate all day, no cheap window."},
  {id:"cap",name:"Standard tariff (price cap)",cheap:26.3,normal:26.3,note:"Ofgem cap 26.32p, Oct to Dec 2026."}];
-const ERR={bad_key:"That key is not right.",locked_out:"Too many wrong keys. The console is locked for an hour.",admin_not_set:"The admin key has not been set on the Synology yet.",bad_ids:"Nothing selected.",bad_size:"Group size must be 2 to 10.",bad_catalog:"The catalog was not accepted."};
+const ERR={bad_key:"That PIN is not right.",locked_out:"Too many wrong PINs. The console is locked for an hour.",admin_not_set:"The admin PIN has not been set on the Synology yet.",bad_ids:"Nothing selected.",bad_size:"Group size must be 2 to 10.",bad_catalog:"The catalog was not accepted."};
 function setDirty(v){dirty=v;$("dirtymsg").hidden=!v}
 async function call(path,body){
  const c=new AbortController();const t=setTimeout(()=>c.abort(),12000);
