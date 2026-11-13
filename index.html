@@ -674,7 +674,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13i";
+const BUILD="2026-11-13j";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -779,16 +779,16 @@ const carFacts=c=>{const n=c[0],f={},y=n.match(/\((20\d\d)\)\s*$/);if(y)f.year=y
  const w=n.match(/(\d\d)\s?(?:inch|in)\b/i);if(w)f.wheels=w[1]+" inch";return f};
 const carMatch=(c,F)=>{const f=carFacts(c);return Object.keys(F).every(g=>f[g]===F[g]||(g==="drive"&&!f.drive))};
 const CHIPNAME={year:"Year",drive:"Drive",ver:"Version",wheels:"Wheels"};
-function carChips(all,F){let h="";
- ["year","drive","ver","wheels"].forEach(g=>{const m={};all.forEach(c=>{const v=carFacts(c)[g];if(v)m[v]=(m[v]||0)+1});const ks=Object.keys(m).sort();
+function carChips(all,F,total){let h="";
+ ["year","drive","ver","wheels"].forEach(g=>{const m={},Fo=Object.assign({},F);delete Fo[g];all.filter(c=>carMatch(c,Fo)).forEach(c=>{const v=carFacts(c)[g];if(v)m[v]=(m[v]||0)+1});const ks=Object.keys(m).sort();
   if(ks.length<2&&!F[g])return;
   h+=`<div style="margin:6px 0"><small style="color:var(--mute)">${CHIPNAME[g]}: </small>`+ks.map(v=>`<button class="btn ${F[g]===v?"":"alt"} sm" style="margin:2px" data-chip="${g}|${esc(v)}" type="button">${esc(v)} (${m[v]})</button>`).join("")+`</div>`});
- return h?`<div class="note" style="margin-bottom:6px"><b>Narrow it down:</b>${h}<small style="color:var(--mute)">Some entries do not say which drive they are (they stay in the list). Tap a lit-up button again to clear it.</small></div>`:""}
+ return h?`<div class="note" style="margin-bottom:6px"><b>Narrow it down: ${total} car${total===1?"":"s"} match${total===1?"es":""} so far.</b>${h}<small style="color:var(--mute)">Some entries do not say which drive they are (they stay in the list). Tap a lit-up button again to clear it.</small></div>`:""}
 function renderCarFinder(inputId,outId,afterAdd){
  const q=$(inputId).value.trim(),out=$(outId);
  if(!q){out.innerHTML="";return}
- const all=carQ(q),F=CF[inputId]||(CF[inputId]={}),hits=all.filter(c=>carMatch(c,F)).slice(0,12),nmatch=all.filter(c=>carMatch(c,F)).length;
- out.innerHTML=(all.length>1?carChips(all,F):"")+(hits.length?hits.map(carRow).join("")+(nmatch>12?`<p class="note">${nmatch} cars match: showing the first 12. Tap the buttons above to narrow it down.</p>`:""):(all.length?`<p class="note">No car matches those buttons. Tap a highlighted button again to clear it.</p>`:""))+(hits.length||all.length?""+`<p class="note">Not the right one? <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button></p>`
+ const all=carQ(q),F=CF[inputId]||(CF[inputId]={}),hits=all.filter(c=>carMatch(c,F)).slice(0,20),nmatch=all.filter(c=>carMatch(c,F)).length;
+ out.innerHTML=(all.length>1?carChips(all,F,nmatch):"")+(hits.length?hits.map(carRow).join("")+(nmatch>20?`<p class="note">${nmatch} cars match: showing the first 20. Tap the buttons above to narrow it down.</p>`:""):(all.length?`<p class="note">No car matches those buttons. Tap a highlighted button again to clear it.</p>`:""))+(hits.length||all.length?""+`<p class="note">Not the right one? <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button></p>`
   :`<p class="note">Nothing in the built-in list matches "${esc(q)}". It combines two free sources but still misses some cars. <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button> and then enter your own miles per kWh.</p>`);
  out.querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{const [g,v]=b.dataset.chip.split("|");if(F[g]===v)delete F[g];else F[g]=v;renderCarFinder(inputId,outId,afterAdd)});
  out.querySelectorAll("[data-addcar]").forEach(b=>b.onclick=()=>{const hit=CARS.find(c=>c[0]===b.dataset.addcar);if(!hit)return;const F=FACT[srcOf(hit)];pushCar({name:hit[0],sum:est(hit[1],F.sum),nor:est(hit[1],F.nor),win:est(hit[1],F.win)});$(inputId).value="";out.innerHTML="";if(afterAdd)afterAdd(hit[0])});
