@@ -166,6 +166,11 @@ a{color:var(--accent)}
    <p class="note" style="margin:0 0 8px">A short message shown at the top of every phone until the person dismisses it. Leave it empty to show nothing.</p>
    <label for="n_text">Message (300 characters at most)</label>
    <textarea id="n_text" maxlength="300" style="min-height:80px;font-family:var(--body);font-size:15px"></textarea>
+   <h2 style="margin-top:18px">Who has read the published notice</h2>
+   <p class="note" style="margin:0 0 8px">Shows the notice that is live now, not edits you have not published yet. A phone is listed when it has opened the app and shown the notice ("Seen"), and again when the person taps the cross ("Dismissed"). Names appear only where the person typed a name in Settings, Home; others show as an anonymous device code. Phones that have not opened the app since the notice went out cannot be listed, because the service does not know them.</p>
+   <div class="row"><button class="btn alt sm" id="n_refresh" type="button">Refresh who has read it</button></div>
+   <p class="note" id="n_sum"></p>
+   <div class="tw"><table id="n_tbl"></table></div>
   </section>
 
   <section id="t-backup" class="card" hidden>
@@ -224,7 +229,7 @@ $("key").addEventListener("keydown",e=>{if(e.key==="Enter")unlock($("key").value
 $("lock").onclick=()=>{KEY="";try{sessionStorage.removeItem("myev-admin-key")}catch(e){}location.reload()};
 async function loadAll(){
  const [o,c]=await Promise.all([call("/v1/admin/overview"),call("/v1/admin/catalog_get")]);
- ov=o;cat={suppliers:c.suppliers||[],places:c.places||[],routes:c.routes||[],fuel:c.fuel||{},announcement:c.announcement||"",ver:c.ver||0};
+ ov=o;cat={suppliers:c.suppliers||[],places:c.places||[],routes:c.routes||[],fuel:c.fuel||{},announcement:c.announcement||"",ver:c.ver||0,tariffsChecked:c.tariffsChecked||0};
  setDirty(false);renderAll();
 }
 
@@ -233,7 +238,13 @@ document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
  ["overview","groups","tariffs","places","notice","backup"].forEach(t=>{$("t-"+t).hidden=t!==b.dataset.tab});
 });
-function renderAll(){renderOverview();renderGroups();renderSup();renderFuel();renderPlaces();renderRoutes();$("n_text").value=cat.announcement||""}
+async function loadAcks(){try{const r=await call("/v1/admin/notice_acks");const t=$("n_tbl");
+ if(!r.text){$("n_sum").textContent="No notice is published at the moment.";t.innerHTML="";return}
+ $("n_sum").textContent="Live notice: “"+r.text+"”. "+r.seen+" device"+(r.seen===1?"":"s")+" opened it, "+r.dismissed+" dismissed it.";
+ const f=x=>x?new Date(x*1000).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Not yet";
+ t.innerHTML="<tr><th>Who</th><th>Seen</th><th>Dismissed</th></tr>"+r.devices.map(d=>"<tr><td>"+esc(d.name||("Device "+d.id))+"</td><td>"+f(d.seen)+"</td><td>"+(d.dismissed?f(d.dismissed):"Not yet")+"</td></tr>").join("")}catch(e){$("n_sum").textContent="Could not load: "+e.message}}
+$("n_refresh").onclick=loadAcks;
+function renderAll(){loadAcks();renderOverview();renderGroups();renderSup();renderFuel();renderPlaces();renderRoutes();$("n_text").value=cat.announcement||""}
 
 /* ---------- overview ---------- */
 function renderOverview(){

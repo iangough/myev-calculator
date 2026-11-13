@@ -215,6 +215,7 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div><label for="hpc">Postcode</label><input id="hpc" placeholder="Type your postcode here" autocapitalize="characters"></div>
       <div><label for="hhouse">House number or name</label><input id="hhouse" placeholder="Type house number or name (optional)"></div>
       <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="Type your region here"></div>
+      <div class="full"><label for="myname">Your name (optional)</label><input id="myname" maxlength="30" placeholder="Type your first name here (optional)" autocomplete="off"><small style="color:var(--mute)">Only used so the person who runs MyEV can see who has read a notice. Leave it empty to stay anonymous.</small></div>
      </div>
      <div class="row" style="margin-top:10px"><button class="btn alt sm" id="usehome" type="button">Use home as the starting point</button><span class="note" id="homemsg"></span></div>
      <p class="note">Home is the default starting point and is listed first in every "Saved place" list. It is kept on this device. Only the "cheapest petrol near home" button uses it, and sends just the location rounded to about 1 km.</p></div>
@@ -674,7 +675,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13l";
+const BUILD="2026-11-13m";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -831,6 +832,7 @@ $("hnick").addEventListener("input",()=>{S.home.nick=$("hnick").value;save()});
 $("hhouse").addEventListener("input",()=>{S.home.house=$("hhouse").value;save()});
 $("hpc").addEventListener("input",()=>{S.home.postcode=$("hpc").value.toUpperCase();save()});
 $("hreg").addEventListener("input",()=>{S.home.region=$("hreg").value;save();loadSupplier()});
+$("myname").value=S.myname||"";$("myname").addEventListener("input",()=>{S.myname=$("myname").value.trim().slice(0,30);save()});
 $("hpc").addEventListener("change",()=>renderPts());$("hnick").addEventListener("change",()=>renderPts());
 $("usehome").onclick=()=>{if(!S.home.postcode.trim()){$("homemsg").textContent="Type your home postcode first.";return}
  R().pts[0]={h:S.home.house||"",p:S.home.postcode,n:S.home.nick||"Home"};save();renderPts();refreshLegs();schedule(100);$("homemsg").textContent="Home set as the starting point."};
@@ -867,12 +869,16 @@ function renderCatalogUI(){
  const c=S.catalog||{};
  const msg=String(c.announcement||"").trim();
  $("banner").hidden=!msg||S.dismissed===msg;$("bannertext").textContent=msg;
+ if(msg&&S.dismissed!==msg&&c.nid&&S.ackSeen!==c.nid){S.ackSeen=c.nid;save();sendAck("seen")}
  const routes=Array.isArray(c.routes)?c.routes:[];
  $("starterbox").hidden=!routes.length;
  $("starter").innerHTML='<option value="">Pick a starter route...</option>'+routes.map((r,i)=>`<option value="${i}">${esc(r.name||"Route")}</option>`).join("");
  renderPts();
 }
-$("bannerx").onclick=()=>{S.dismissed=String((S.catalog&&S.catalog.announcement)||"").trim();save();$("banner").hidden=true};
+/* read receipt for notices: sends an anonymous device code plus the optional name the person typed; nothing else */
+function sendAck(ev){try{const c=S.catalog||{};if(!c.nid)return;if(!S.did){S.did=Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>("0"+b.toString(16)).slice(-2)).join("");save()}
+ fetch(SYNC_URL+"/v1/notice/ack",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nid:c.nid,did:S.did,name:S.myname||"",ev:ev})}).catch(()=>{})}catch(e){}}
+$("bannerx").onclick=()=>{S.dismissed=String((S.catalog&&S.catalog.announcement)||"").trim();save();$("banner").hidden=true;sendAck("dismissed")};
 $("starter").onchange=()=>{const r=((S.catalog&&S.catalog.routes)||[])[+$("starter").value];if(!r||!Array.isArray(r.pts)||r.pts.length<2)return;
  R().pts=r.pts.slice(0,4).map(q=>q.home?{h:S.home.house||"",p:S.home.postcode||"",n:S.home.nick||"Home"}:{h:String(q.h||""),p:String(q.p||"").toUpperCase(),n:String(q.n||"")});R().ret=r.ret!==false;R().ign=!!r.ign;R().parked=[];editingId=null;
  $("jname").value=r.name||"";save();$("ret").checked=R().ret;$("ign").checked=R().ign;renderPts();refreshLegs();renderEdit();schedule(100);$("starter").value=""};
