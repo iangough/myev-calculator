@@ -667,6 +667,19 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
+const BUILD="2026-11-13b";
+/* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
+async function checkUpdate(){
+ if(!/github\.io$/.test(location.hostname))return;
+ try{const r=await tfetch("version.txt?t="+Date.now(),6000);if(!r.ok)return;const v=(await r.text()).trim();
+  if(v&&v!==BUILD&&!$("updbar")){const d=document.createElement("div");d.id="updbar";
+   d.style.cssText="position:fixed;left:0;right:0;top:0;z-index:99;background:#2f6df6;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:15px";
+   d.innerHTML='<span>A new version of MyEV is available.</span><button class="btn sm" id="updgo" type="button" style="background:#fff;color:#0b1830">Update now</button>';
+   document.body.appendChild(d);
+   $("updgo").onclick=async()=>{$("updgo").textContent="Updating...";try{await fetch("./",{cache:"reload"});await fetch("index.html",{cache:"reload"})}catch(e){}location.reload()}}
+ }catch(e){}
+}
+setTimeout(checkUpdate,3000);setInterval(checkUpdate,600000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkUpdate()});
 function regSW(){if("serviceWorker" in navigator&&/github\.io$/.test(location.hostname)){navigator.serviceWorker.register("sw.js").catch(()=>{})}}
 /* ---------- save / copy ---------- */
 function renderPlaces(){
