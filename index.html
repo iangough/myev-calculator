@@ -674,7 +674,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-13f";
+const BUILD="2026-11-13g";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -768,20 +768,34 @@ const carQ=q=>{const ql=q.toLowerCase().trim(),t=ql.split(/\s+/).filter(Boolean)
  let r=CARS.filter(c=>{const n=c[0].toLowerCase();return pre.every(re=>re.test(n))});
  if(!r.length)r=CARS.filter(c=>{const n=c[0].toLowerCase();return t.every(w=>n.indexOf(w)>=0)});
  r.sort((a,b)=>(b[0].toLowerCase().indexOf(ql)>=0)-(a[0].toLowerCase().indexOf(ql)>=0));
- return r.slice(0,12)};
+ return r};
 const est=(w,x)=>(Math.round(w*x*10)/10);
 function carRow(c){const F=FACT[srcOf(c)];const bat=c[2]?c[2]+" kWh battery":"battery size not published";const sn=srcOf(c)==="E"?"US EPA figures (US version of the car)":"official WLTP figures";return `<div class="trip"><div><b>${esc(c[0])}</b><br><small style="color:var(--mute)">${bat} · range ${c[3]} km (${Math.round(c[3]*0.621371)} mi) · from ${sn}<br>My estimate for real use: ${est(c[1],F.win).toFixed(1)} winter, ${est(c[1],F.nor).toFixed(1)} normal, ${est(c[1],F.sum).toFixed(1)} summer miles per kWh</small></div><button class="btn alt sm" data-addcar="${esc(c[0])}" type="button">Use this car</button></div>`}
+/* quick filter buttons for the car finder: year, drive, version, wheels, worked out from each car's name */
+const CF={};
+const carFacts=c=>{const n=c[0],f={},y=n.match(/\((20\d\d)\)\s*$/);if(y)f.year=y[1];
+ const d=n.match(/(RWD|AWD|FWD|4WD|2WD)/i);if(d)f.drive=d[1].toUpperCase();
+ if(/long range/i.test(n))f.ver="Long range";else if(/standard range/i.test(n))f.ver="Standard range";
+ const w=n.match(/(\d\d)\s?(?:inch|in)/i);if(w)f.wheels=w[1]+" inch";return f};
+const carMatch=(c,F)=>{const f=carFacts(c);return Object.keys(F).every(g=>f[g]===F[g])};
+const CHIPNAME={year:"Year",drive:"Drive",ver:"Version",wheels:"Wheels"};
+function carChips(all,F){let h="";
+ ["year","drive","ver","wheels"].forEach(g=>{const m={};all.forEach(c=>{const v=carFacts(c)[g];if(v)m[v]=(m[v]||0)+1});const ks=Object.keys(m).sort();
+  if(ks.length<2&&!F[g])return;
+  h+=`<div style="margin:6px 0"><small style="color:var(--mute)">${CHIPNAME[g]}: </small>`+ks.map(v=>`<button class="btn ${F[g]===v?"":"alt"} sm" style="margin:2px" data-chip="${g}|${esc(v)}" type="button">${esc(v)} (${m[v]})</button>`).join("")+`</div>`});
+ return h?`<div class="note" style="margin-bottom:6px"><b>Narrow it down:</b>${h}<small style="color:var(--mute)">Some entries do not say which drive or version they are, so they disappear when you pick one. Tap the button again to clear it.</small></div>`:""}
 function renderCarFinder(inputId,outId,afterAdd){
  const q=$(inputId).value.trim(),out=$(outId);
  if(!q){out.innerHTML="";return}
- const hits=carQ(q);
- out.innerHTML=hits.length?hits.map(carRow).join("")+(hits.length>=12?`<p class="note">Showing the first 12. Type more of the name (the year or version) to narrow it down.</p>`:"")+`<p class="note">Not the right one? <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button></p>`
-  :`<p class="note">Nothing in the built-in list matches "${esc(q)}". It combines two free sources but still misses some cars. <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button> and then enter your own miles per kWh.</p>`;
+ const all=carQ(q),F=CF[inputId]||(CF[inputId]={}),hits=all.filter(c=>carMatch(c,F)).slice(0,12),nmatch=all.filter(c=>carMatch(c,F)).length;
+ out.innerHTML=(all.length>1?carChips(all,F):"")+(hits.length?hits.map(carRow).join("")+(nmatch>12?`<p class="note">${nmatch} cars match: showing the first 12. Tap the buttons above to narrow it down.</p>`:""):(all.length?`<p class="note">No car matches those buttons. Tap a highlighted button again to clear it.</p>`:""))+(hits.length||all.length?""+`<p class="note">Not the right one? <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button></p>`
+  :`<p class="note">Nothing in the built-in list matches "${esc(q)}". It combines two free sources but still misses some cars. <button class="btn alt sm" data-asis="1" type="button">Add "${esc(q)}" as typed</button> and then enter your own miles per kWh.</p>`);
+ out.querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{const [g,v]=b.dataset.chip.split("|");if(F[g]===v)delete F[g];else F[g]=v;renderCarFinder(inputId,outId,afterAdd)});
  out.querySelectorAll("[data-addcar]").forEach(b=>b.onclick=()=>{const hit=CARS.find(c=>c[0]===b.dataset.addcar);if(!hit)return;const F=FACT[srcOf(hit)];pushCar({name:hit[0],sum:est(hit[1],F.sum),nor:est(hit[1],F.nor),win:est(hit[1],F.win)});$(inputId).value="";out.innerHTML="";if(afterAdd)afterAdd(hit[0])});
  out.querySelectorAll("[data-asis]").forEach(b=>b.onclick=()=>{pushCar({name:q,sum:3.5,nor:3.2,win:2.8});$(inputId).value="";out.innerHTML="";if(afterAdd)afterAdd(q+" (placeholder figures, please set your own)")})
 }
-$("carq").addEventListener("input",()=>renderCarFinder("carq","carres",n=>{$("carmsg").textContent="Added "+n+". Overtype its miles per kWh in the list above if you know better."}));
-$("w_carq").addEventListener("input",()=>renderCarFinder("w_carq","w_carres",n=>{S.cars=S.cars.filter(c=>!(c.preset&&!c.edited));save();fillSelects();loadCar();renderCars();calc();$("w_carres").innerHTML='<p class="msg">Selected: '+esc(n)+'</p>'}));
+$("carq").addEventListener("input",()=>{CF.carq={};renderCarFinder("carq","carres",n=>{$("carmsg").textContent="Added "+n+". Overtype its miles per kWh in the list above if you know better."})});
+$("w_carq").addEventListener("input",()=>{CF.w_carq={};renderCarFinder("w_carq","w_carres",n=>{S.cars=S.cars.filter(c=>!(c.preset&&!c.edited));save();fillSelects();loadCar();renderCars();calc();$("w_carres").innerHTML='<p class="msg">Selected: '+esc(n)+'</p>'})});
 function stdLine(c){const cs=((S.catalog&&S.catalog.suppliers)||[]).find(x=>String(x.id)===String(c.id));
  if(!cs)return "";const same=(+cs.cheap===+c.cheap)&&(+cs.normal===+c.normal);
  return same?`<div class="name"><small style="color:var(--mute)">Standard rates (from MyEV): ${cs.cheap} / ${cs.normal}p. These are the same as yours.</small></div>`:
