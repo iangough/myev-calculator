@@ -235,7 +235,7 @@ const DEFSUP=[
  {id:"bg",name:"British Gas EV Power",cheap:9.5,normal:26.3,note:"Varies by region. Peak rate not confirmed."},
  {id:"ovo",name:"OVO Charge Anytime",cheap:13.3,normal:13.3,note:"Flat rate all day, no cheap window."},
  {id:"cap",name:"Standard tariff (price cap)",cheap:26.3,normal:26.3,note:"Ofgem cap 26.32p, Oct to Dec 2026."}];
-const ERR={bad_key:"That PIN is not right.",locked_out:"Too many wrong PINs. The console is locked for an hour.",admin_not_set:"The admin PIN has not been set on the Synology yet.",bad_ids:"Nothing selected.",bad_size:"Group size must be 2 to 10.",bad_catalog:"The catalog was not accepted."};
+const ERR={bad_key:"That PIN is not right.",locked_out:"Too many wrong PINs. The console is locked for an hour.",admin_not_set:"The admin PIN has not been set on the Synology yet.",bad_ids:"Nothing selected.",bad_size:"Group size must be 2 to 10.",bad_catalog:"The catalog was not accepted.",bad_cars:"A car was not accepted: each needs a name, miles per gallon between 5 and 200, and a fuel.",bad_places:"A place was not accepted: each needs a nickname (not Home) and a real UK postcode.",bad_interval:"The refresh time must be between 2 minutes and 1 hour."};
 function setDirty(v){dirty=v;$("dirtymsg").hidden=!v}
 async function call(path,body){
  const c=new AbortController();const t=setTimeout(()=>c.abort(),12000);
