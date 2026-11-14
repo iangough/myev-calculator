@@ -188,6 +188,15 @@ a{color:var(--accent)}
    <textarea id="c_notice" maxlength="300" style="min-height:70px;font-family:var(--body);font-size:15px"></textarea>
    <div class="row" style="margin-top:8px"><button class="btn alt" id="c_savenotice" type="button">Publish Chintzy notice</button><button class="btn bad" id="c_test" type="button">Send a test alert to every subscribed phone</button><button class="btn alt" id="c_refresh" type="button">Refresh this page</button></div>
    <p class="msg" id="c_msg"></p>
+   <h2 style="margin-top:16px">Journey costing: typical cars and suggested places</h2>
+   <p class="note" style="margin:0 0 8px">These feed the "Cost a journey" screen in Chintzy. Each person can add their own cars and places on their phone; these are the ones everybody starts with.</p>
+   <label for="c_cars">Typical cars (one per line: name, real-world miles per gallon, fuel)</label>
+   <textarea id="c_cars" placeholder="Family petrol, 40, unleaded&#10;Small diesel, 58, diesel"></textarea>
+   <p class="note">Fuel can be: unleaded (petrol), super, diesel, premium_diesel, hvo or b10.</p>
+   <label for="c_places" style="margin-top:10px">Suggested places (one per line: nickname, postcode)</label>
+   <textarea id="c_places" placeholder="Dan, GU51 3PF"></textarea>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="c_savejny" type="button">Publish journey settings</button></div>
+   <p class="note">The word Home is reserved: it always means the person's own saved home postcode.</p>
    <h2 style="margin-top:16px">Fuels in the data</h2>
    <div class="tw"><table id="c_fuels"></table></div>
    <h2 style="margin-top:16px">Alert rules in force</h2>
@@ -284,6 +293,8 @@ function renderChz(){
  $("c_pause").textContent=c.paused?"Resume alerts":"Pause alerts";
  $("c_int").value=String(c.interval);
  if(document.activeElement!==$("c_notice"))$("c_notice").value=c.notice||"";
+ if(document.activeElement!==$("c_cars"))$("c_cars").value=(c.cars||[]).map(x=>x.name+", "+x.mpg+", "+x.fuel).join("\n");
+ if(document.activeElement!==$("c_places"))$("c_places").value=(c.places||[]).map(x=>x.n+", "+x.p).join("\n");
  $("c_fuels").innerHTML="<tr><th>Fuel</th><th>Stations with a price</th><th>Phones watching it</th></tr>"+Object.keys(CFN).map(k=>"<tr><td>"+esc(CFN[k])+"</td><td>"+(c.counts[k]||0)+"</td><td>"+((c.byFuel||{})[k]||0)+"</td></tr>").join("");
  const L=c.limits||{};
  $("c_rules").textContent="Only real drops (default 1p or more, each phone can choose 1, 2, 3 or 5p; falls over 30p are ignored as data errors) at a station in that phone's top 10. One alert per refresh per phone, at most "+L.perHour+" an hour and "+L.perDay+" a day, the same station not repeated for "+L.cooldownH+" hours, none between "+L.quiet+" UK time.";
@@ -296,6 +307,17 @@ $("c_int").onchange=()=>setChz({interval:+$("c_int").value},"Refresh interval sa
 $("c_now").onclick=async()=>{await setChz({refresh_now:true},"Refreshing now. This takes about 40 seconds: press Refresh this page afterwards.")};
 $("c_savenotice").onclick=()=>setChz({notice:$("c_notice").value},$("c_notice").value.trim()?"Notice published. Chintzy users will see it the next time they open the app.":"Notice removed.");
 $("c_refresh").onclick=async()=>{await loadChz();cmsg("Refreshed.")};
+$("c_savejny").onclick=()=>{
+ const FM={petrol:"unleaded",e10:"unleaded",unleaded:"unleaded",super:"super",e5:"super",diesel:"diesel",premium_diesel:"premium_diesel","premium diesel":"premium_diesel",hvo:"hvo",b10:"b10"};
+ const cars=[],places=[];
+ for(const ln of $("c_cars").value.split("\n")){const t=ln.trim();if(!t)continue;const p=t.split(",").map(x=>x.trim());const f=FM[(p[2]||"").toLowerCase()];
+  if(p.length<3||!p[0]||!(parseFloat(p[1])>=5)||!f){cmsg("Car line not understood: “"+t+"”. Use: name, miles per gallon, fuel.",true);return}
+  cars.push({name:p[0],mpg:parseFloat(p[1]),fuel:f})}
+ for(const ln of $("c_places").value.split("\n")){const t=ln.trim();if(!t)continue;const i=t.lastIndexOf(",");
+  if(i<1){cmsg("Place line not understood: “"+t+"”. Use: nickname, postcode.",true);return}
+  places.push({n:t.slice(0,i).trim(),p:t.slice(i+1).trim()})}
+ setChz({cars,places},"Journey settings published: "+cars.length+" car(s), "+places.length+" place(s). Phones pick them up the next time Chintzy is opened.");
+};
 let cArm=false;
 $("c_test").onclick=async()=>{const b=$("c_test");if(!cArm){cArm=true;b.textContent="Press again to confirm: this notifies "+(chz?chz.subsOn:"all")+" phone(s)";setTimeout(()=>{cArm=false;b.textContent="Send a test alert to every subscribed phone"},6000);return}
  cArm=false;b.textContent="Send a test alert to every subscribed phone";try{const r=await call("/v1/admin/chintzy_test");cmsg("Test sent to "+r.sent+" phone(s), "+r.failed+" failed"+(r.removed?", "+r.removed+" dead one(s) removed":"")+".");loadChz()}catch(e){cmsg(e.message,true)}};
