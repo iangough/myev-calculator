@@ -73,7 +73,7 @@ a{color:var(--accent)}
     <button role="tab" data-tab="tariffs" aria-selected="false">Tariffs and petrol</button>
     <button role="tab" data-tab="places" aria-selected="false">Places and routes</button>
     <button role="tab" data-tab="notice" aria-selected="false">Notice</button>
-    <button role="tab" data-tab="chintzy" aria-selected="false">Chintzy</button>
+    <button role="tab" data-tab="chintzy" aria-selected="false">MyICE</button>
     <button role="tab" data-tab="backup" aria-selected="false">Backup</button>
    </div>
    <div class="row"><span id="dirtymsg" class="dirty" hidden>Unpublished changes</span><button class="btn" id="publish" type="button">Publish changes</button><button class="btn alt" id="lock" type="button">Lock</button></div>
@@ -176,20 +176,20 @@ a{color:var(--accent)}
   </section>
 
   <section id="t-chintzy" class="card" hidden>
-   <h2>Chintzy (cheapest petrol app)</h2>
-   <p class="note" style="margin:0 0 8px">Chintzy is the companion to MyEV: it lists the 10 cheapest petrol stations near a postcode and can send price-drop alerts. The buttons on this tab take effect straight away; they do not need Publish changes. No names are stored: each phone is only an anonymous alert address with a rounded location.</p>
+   <h2>MyICE (petrol and diesel journey costs, cheapest petrol)</h2>
+   <p class="note" style="margin:0 0 8px">MyICE is the petrol and diesel twin of MyEV (first called Chintzy; the app is at https://iangough.github.io/myice/): it works out what a journey costs in a petrol or diesel car compared with an electric car, lists the 10 cheapest petrol stations near a postcode and can send price-drop alerts. Its sharing groups are listed on the Groups tab with the app name. The buttons on this tab take effect straight away; they do not need Publish changes. No names are stored: each phone is only an anonymous alert address with a rounded location.</p>
    <div class="tiles" id="c_tiles"></div>
    <p class="msg" id="c_status"></p>
    <h2 style="margin-top:16px">Controls</h2>
    <div class="row"><button class="btn alt" id="c_pause" type="button">Pause alerts</button>
     <label for="c_int" style="margin:0 0 0 8px">Refresh every</label><select id="c_int" style="width:auto"><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="600">10 minutes</option><option value="900">15 minutes</option><option value="1800">30 minutes</option><option value="3600">1 hour</option></select>
     <button class="btn alt" id="c_now" type="button">Refresh prices now</button></div>
-   <label for="c_notice" style="margin-top:12px">Notice shown to Chintzy users (300 characters at most; empty shows nothing)</label>
+   <label for="c_notice" style="margin-top:12px">Notice shown to MyICE users (300 characters at most; empty shows nothing)</label>
    <textarea id="c_notice" maxlength="300" style="min-height:70px;font-family:var(--body);font-size:15px"></textarea>
-   <div class="row" style="margin-top:8px"><button class="btn alt" id="c_savenotice" type="button">Publish Chintzy notice</button><button class="btn bad" id="c_test" type="button">Send a test alert to every subscribed phone</button><button class="btn alt" id="c_refresh" type="button">Refresh this page</button></div>
+   <div class="row" style="margin-top:8px"><button class="btn alt" id="c_savenotice" type="button">Publish MyICE notice</button><button class="btn bad" id="c_test" type="button">Send a test alert to every subscribed phone</button><button class="btn alt" id="c_refresh" type="button">Refresh this page</button></div>
    <p class="msg" id="c_msg"></p>
    <h2 style="margin-top:16px">Journey costing: typical cars and suggested places</h2>
-   <p class="note" style="margin:0 0 8px">These feed the "Cost a journey" screen in Chintzy. Each person can add their own cars and places on their phone; these are the ones everybody starts with.</p>
+   <p class="note" style="margin:0 0 8px">These feed the "Cost a journey" screen in MyICE. Each person can add their own cars and places on their phone; these are the ones everybody starts with.</p>
    <label for="c_cars">Typical cars (one per line: name, real-world miles per gallon, fuel)</label>
    <textarea id="c_cars" placeholder="Family petrol, 40, unleaded&#10;Small diesel, 58, diesel"></textarea>
    <p class="note">Fuel can be: unleaded (petrol), super, diesel, premium_diesel, hvo or b10.</p>
@@ -279,11 +279,11 @@ $("n_refresh").onclick=loadAcks;
 function renderAll(){loadAcks();renderOverview();renderGroups();renderSup();renderFuel();renderPlaces();renderRoutes();$("n_text").value=cat.announcement||""}
 
 
-/* ---------- Chintzy (companion app) ---------- */
+/* ---------- MyICE (companion app) ---------- */
 let chz=null;
 const CFN={unleaded:"Unleaded (E10)",super:"Super unleaded (E5)",diesel:"Diesel",premium_diesel:"Premium diesel",hvo:"HVO diesel",b10:"B10 diesel"};
 function cmsg(t,bad){$("c_msg").textContent=t;$("c_msg").className="msg "+(bad?"err":"ok")}
-async function loadChz(){try{chz=await call("/v1/admin/chintzy");renderChz()}catch(e){cmsg("Could not load Chintzy: "+e.message,true)}}
+async function loadChz(){try{chz=await call("/v1/admin/chintzy");renderChz()}catch(e){cmsg("Could not load MyICE: "+e.message,true)}}
 function renderChz(){
  const c=chz;if(!c)return;
  const tile=(a,b)=>`<div class="tile"><small>${esc(a)}</small><b>${esc(b)}</b></div>`;
@@ -305,7 +305,7 @@ async function setChz(body,ok){try{chz=await call("/v1/admin/chintzy_set",body);
 $("c_pause").onclick=()=>setChz({paused:!(chz&&chz.paused)},chz&&chz.paused?"Alerts resumed.":"Alerts paused. Prices keep refreshing.");
 $("c_int").onchange=()=>setChz({interval:+$("c_int").value},"Refresh interval saved.");
 $("c_now").onclick=async()=>{await setChz({refresh_now:true},"Refreshing now. This takes about 40 seconds: press Refresh this page afterwards.")};
-$("c_savenotice").onclick=()=>setChz({notice:$("c_notice").value},$("c_notice").value.trim()?"Notice published. Chintzy users will see it the next time they open the app.":"Notice removed.");
+$("c_savenotice").onclick=()=>setChz({notice:$("c_notice").value},$("c_notice").value.trim()?"Notice published. MyICE users will see it the next time they open the app.":"Notice removed.");
 $("c_refresh").onclick=async()=>{await loadChz();cmsg("Refreshed.")};
 $("c_savejny").onclick=()=>{
  const FM={petrol:"unleaded",e10:"unleaded",unleaded:"unleaded",super:"super",e5:"super",diesel:"diesel",premium_diesel:"premium_diesel","premium diesel":"premium_diesel",hvo:"hvo",b10:"b10"};
@@ -316,7 +316,7 @@ $("c_savejny").onclick=()=>{
  for(const ln of $("c_places").value.split("\n")){const t=ln.trim();if(!t)continue;const i=t.lastIndexOf(",");
   if(i<1){cmsg("Place line not understood: “"+t+"”. Use: nickname, postcode.",true);return}
   places.push({n:t.slice(0,i).trim(),p:t.slice(i+1).trim()})}
- setChz({cars,places},"Journey settings published: "+cars.length+" car(s), "+places.length+" place(s). Phones pick them up the next time Chintzy is opened.");
+ setChz({cars,places},"Journey settings published: "+cars.length+" car(s), "+places.length+" place(s). Phones pick them up the next time MyICE is opened.");
 };
 let cArm=false;
 $("c_test").onclick=async()=>{const b=$("c_test");if(!cArm){cArm=true;b.textContent="Press again to confirm: this notifies "+(chz?chz.subsOn:"all")+" phone(s)";setTimeout(()=>{cArm=false;b.textContent="Send a test alert to every subscribed phone"},6000);return}
@@ -334,7 +334,7 @@ $("refresh").onclick=async()=>{try{await loadAll();$("pubmsg").textContent="Refr
 for(let i=2;i<=10;i++)$("g_cap").insertAdjacentHTML("beforeend",`<option value="${i}">${i} people</option>`);
 function renderGroups(){
  const G=ov.groups.slice().sort((a,b)=>(b.touched||0)-(a.touched||0));
- $("gtable").innerHTML=G.length?`<tr><th></th><th>Group name</th><th>People</th><th>Created</th><th>Last sync</th><th>Journeys</th><th>Places</th><th>Invite open</th></tr>`+G.map(g=>`<tr><td><input type="checkbox" class="n" data-g="${g.id}" ${gsel[g.id]?"checked":""} aria-label="Select group ${esc(g.name||g.id.slice(0,6))}"></td><td>${g.name?"<b>"+esc(g.name)+"</b>":"<span class=\"note\">(not named)</span>"} <small class="note">${g.id.slice(0,6)}</small></td><td>${g.members} of ${g.cap}</td><td>${ago(g.created)}</td><td>${ago(g.touched)}</td><td>${g.trips}</td><td>${g.places}</td><td>${g.invite?"yes":"no"}</td></tr>`).join(""):'<tr><td class="note">No groups yet.</td></tr>';
+ $("gtable").innerHTML=G.length?`<tr><th></th><th>Group name</th><th>App</th><th>People</th><th>Created</th><th>Last sync</th><th>Journeys</th><th>Places</th><th>Invite open</th></tr>`+G.map(g=>`<tr><td><input type="checkbox" class="n" data-g="${g.id}" ${gsel[g.id]?"checked":""} aria-label="Select group ${esc(g.name||g.id.slice(0,6))}"></td><td>${g.name?"<b>"+esc(g.name)+"</b>":"<span class=\"note\">(not named)</span>"} <small class="note">${g.id.slice(0,6)}</small></td><td>${g.app==="ice"?"MyICE":"MyEV"}</td><td>${g.members} of ${g.cap}</td><td>${ago(g.created)}</td><td>${ago(g.touched)}</td><td>${g.trips}</td><td>${g.places}</td><td>${g.invite?"yes":"no"}</td></tr>`).join(""):'<tr><td class="note">No groups yet.</td></tr>';
  $("gtable").querySelectorAll("[data-g]").forEach(c=>c.onchange=()=>{gsel[c.dataset.g]=c.checked});
 }
 function picked(){return Object.keys(gsel).filter(k=>gsel[k]&&ov.groups.find(g=>g.id===k))}
