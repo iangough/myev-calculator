@@ -1,7 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1830"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><script>setTimeout(function(){try{if(window.__ok||sessionStorage.getItem("rescued"))return;sessionStorage.setItem("rescued","1");var done=function(){location.reload()};var a=window.caches?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k)}))}):Promise.resolve();a.then(function(){return navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister()}))}):0}).then(done,done)}catch(e){}},6000)</script></head><body>
 <title>MyEV Calculator</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
 <style>
 /* Layout: dark navy; two columns on wide screens (route + car on the left, results + journeys on the right), one column on a phone */
 :root{
@@ -86,28 +85,83 @@ td.p{color:var(--petrol);font-weight:700}
 #tripdet td{white-space:normal;word-break:break-word}#tripdet td:last-child{text-align:right}
 a{color:var(--accent)}
 details>summary{cursor:pointer;font:600 17px var(--head)}
+
+/* ===== 2026-11-23 redesign: Tablets-style look, bottom tabs, tip of the day ===== */
+:root{--head:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--body:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+ --bg:#10151b;--card:#19212a;--fg:#e8eef4;--mute:#9aa9b8;--line:#2a3541;--accent:#6aa2ff;--accent-fg:#06142b;--good:#4cc58a;--warn:#f0b340;--petrol:#ff7a7a;--hl:#223040;
+ --okbg:#14301f;--badbg:#3b1b1b;--warnbg:#3a2f12;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f4f6f8;--card:#fff;--fg:#17212b;--mute:#5d6b79;--line:#dde3e9;--accent:#2a6fdb;--accent-fg:#fff;--good:#1f9d55;--warn:#b86f00;--petrol:#d64545;--hl:#e8f0fd;--okbg:#e4f6ec;--badbg:#fde6e6;--warnbg:#fff3d6;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f4f6f8;--card:#fff;--fg:#17212b;--mute:#5d6b79;--line:#dde3e9;--accent:#2a6fdb;--accent-fg:#fff;--good:#1f9d55;--warn:#b86f00;--petrol:#d64545;--hl:#e8f0fd;--okbg:#e4f6ec;--badbg:#fde6e6;--warnbg:#fff3d6;color-scheme:light}
+:root[data-theme="dark"]{--bg:#10151b;--card:#19212a;--fg:#e8eef4;--mute:#9aa9b8;--line:#2a3541;--accent:#6aa2ff;--accent-fg:#06142b;--good:#4cc58a;--warn:#f0b340;--petrol:#ff7a7a;--hl:#223040;--okbg:#14301f;--badbg:#3b1b1b;--warnbg:#3a2f12;color-scheme:dark}
+body{margin:0;font-size:16px;line-height:1.4;padding-block:0 calc(92px + env(safe-area-inset-bottom,0px))}
+.page{max-width:1000px;gap:0}
+.page>*{margin-top:12px}
+header.top{position:sticky;top:0;z-index:30;background:var(--bg);margin:0 -16px;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 8px;border-bottom:1px solid transparent}
+header.top.scrolled{border-bottom-color:var(--line)}
+.titlerow{display:flex;align-items:center;gap:10px}
+.logo{flex:none;width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center}
+h1{font-size:22px;font-weight:800}
+.tag{color:var(--mute);font-size:13px;margin-top:1px}
+.netbar{margin-top:0}
+.card{border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+h2{font-size:17px;font-weight:750;margin:0 0 10px}
+.btn{min-height:44px;border-radius:12px;font-weight:650;padding:10px 16px}
+.btn.sm{min-height:36px;padding:6px 12px;border-radius:10px}
+a.btn{display:inline-flex;align-items:center;justify-content:center}
+input,select{min-height:44px;border-radius:10px;padding:10px 12px}
+label{font-size:12px;font-weight:700;letter-spacing:.05em}
+.chk input{min-height:0;width:20px;height:20px}
+.chk{min-height:36px}
+table{font-size:15px}
+.tiles{gap:10px}
+.tile{border-radius:12px;padding:12px 14px;border:0}
+.tile.ev{background:var(--okbg)}.tile.pet{background:var(--badbg)}
+.tile small{font-size:11px;font-weight:700}
+.tile .v{font-size:28px;font-weight:800}
+.src{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--warnbg);font-size:11px;vertical-align:middle}
+.src.mine{background:var(--okbg)}
+.trip{padding:12px 0}
+.sum div{border-radius:10px}
+#mini{display:flex;gap:8px;align-items:stretch;margin-top:8px}
+#mini .mut{color:var(--mute);font-size:14px;padding:8px 2px}
+.mi{flex:1;min-width:0;border-radius:12px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center}
+.mi small{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.mi b{font-size:19px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.mi.ev{background:var(--okbg)}.mi.ev b{color:var(--good)}
+.mi.pet{background:var(--badbg)}.mi.pet b{color:var(--petrol)}
+.mi.mt{flex:.8;background:transparent;padding-left:2px}.mi.mt small{font-size:12px;text-transform:none;letter-spacing:0;white-space:normal;line-height:1.2}
+.tabsec{display:block}
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+#tabs button{flex:1;border:0;background:none;color:var(--mute);padding:8px 2px 9px;font:650 12px var(--body);cursor:pointer;min-width:0;position:relative}
+#tabs button .ic{display:block;font-size:22px;line-height:1.1;filter:grayscale(1);opacity:.75}
+#tabs button.on{color:var(--accent)}
+#tabs button.on .ic{filter:none;opacity:1}
+#tabs button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+.tipcard{border-color:var(--accent);display:flex;gap:12px;align-items:flex-start}
+.tipq{flex:none;width:34px;height:34px;border-radius:17px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-weight:800}
+.tiles{display:none}@media(max-width:480px){.pt .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.ptmore summary{font:650 14px var(--body);color:var(--accent);cursor:pointer;padding:4px 0}.pt{padding:10px 12px}.pt .grid{gap:8px 10px}.tipk{color:var(--mute);font-size:12px;font-weight:700;letter-spacing:.04em}
+.tipcard .row{margin-top:8px}
+@media(max-width:480px){h1{font-size:20px}.tile .v{font-size:24px}.mi b{font-size:17px}}
 </style>
 
 <div class="page">
- <div class="row" style="justify-content:space-between"><h1>MyEV Calculator</h1>
-  <label class="chk" for="theme" style="text-transform:none">Theme <select id="theme" style="width:auto"><option value="auto">Auto (system)</option><option value="dark">Dark blue</option><option value="light">Light blue</option></select></label></div>
- <p class="lead">What does a journey cost in an electric car, compared with petrol?</p>
- <div class="netbar" id="netbar" role="status" aria-live="polite"><span class="dot" id="netdot"></span><span id="nettext">Checking connection...</span><button class="btn alt sm" id="netinfo" type="button">What works offline?</button><button class="btn sm" id="sharetop" type="button">Share journeys or join with a code</button></div>
- <div class="card" id="retrybox" hidden>
+<header class="top" id="topbar"><div class="titlerow"><div class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div><div><h1>MyEV Calculator</h1><div class="tag">Electric car or petrol: what does the journey cost?</div></div></div><div id="mini"></div></header>
+<div class="netbar" id="netbar" role="status" aria-live="polite"><span class="dot" id="netdot"></span><span id="nettext">Checking connection...</span><button class="btn alt sm" id="netinfo" type="button">What works offline?</button><button class="btn sm" id="sharetop" hidden type="button">Share journeys or join with a code</button></div>
+<div class="card" id="retrybox" hidden>
   <h2>Are you offline?</h2>
   <p class="note" style="margin:0 0 8px" id="retrytext">No answer after 3 tries. If you are in a dead spot or a tunnel, say so and I will try again later. Everything you have already saved still works.</p>
   <div class="row"><span class="note">Yes, I am offline. Try again in:</span>
    <button class="btn alt sm" data-retry="1" type="button">1 minute</button><button class="btn alt sm" data-retry="2" type="button">2 minutes</button><button class="btn alt sm" data-retry="5" type="button">5 minutes</button><button class="btn alt sm" data-retry="10" type="button">10 minutes</button></div>
   <div class="row" style="margin-top:8px"><button class="btn sm" id="retrynow" type="button">No, I am online: try now</button></div>
  </div>
- <div class="card" id="netdetail" hidden>
+<div class="card" id="netdetail" hidden>
   <h2>What works with no connection</h2>
   <p class="note" style="margin:0"><b>Still works:</b> working out costs from miles you type into the small boxes, changing the car, season, tariff and petrol price, nicknames and saved places, saving, starring and deleting journeys, and looking at your saved journeys. Everything you do is kept on this device.</p>
   <p class="note"><b>Needs internet:</b> automatic road miles between postcodes, sharing with family (your changes wait on this device and sync once you are back online), and sending a WhatsApp or email. The app must have been opened once online before it can open with no signal.</p>
   <p class="note"><b>If only the sharing server is down:</b> the internet still works, so road miles and everything else carry on. Only the family sync waits.</p>
   <p class="note"><b>After 3 minutes with no connection</b> this bar turns red to remind you that live road miles, sharing and tariff updates are unavailable. The calculator itself keeps working.</p>
  </div>
- <div class="card hero" id="welcome" hidden>
+<div class="card hero" id="welcome" hidden>
   <h2>Welcome to MyEV</h2>
   <p class="note" style="margin:0 0 10px">Two quick steps. You can change anything later.</p>
   <label>Step 1: where is your home?</label>
@@ -123,11 +177,9 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
   <div class="row" style="margin-top:10px"><button class="btn" id="w_save" type="button">Save and start</button><button class="btn alt" id="w_skip" type="button">Skip for now</button></div>
   <p class="note">Your home becomes the starting point of every new journey. It is kept on this device only.</p>
  </div>
- <div class="card" id="banner" hidden><div class="row" style="justify-content:space-between"><span id="bannertext"></span><button class="btn alt sm" id="bannerx" type="button">Dismiss</button></div></div>
- <div class="cols">
-  <div class="col">
-   <div class="card">
-    <h2><span class="stepn">1</span>Your route</h2>
+<div class="card" id="banner" hidden><div class="row" style="justify-content:space-between"><span id="bannertext"></span><button class="btn alt sm" id="bannerx" type="button">Dismiss</button></div></div>
+<main><section class="tabsec" id="tab-trip"><div id="tipslot"></div><div class="cols"><div class="col"><div class="card">
+    <h2>Your route</h2>
     <div id="starterbox" hidden style="margin-bottom:10px"><label for="starter">Starter routes</label><select id="starter"></select></div>
     <div id="pts"></div><datalist id="places"></datalist>
     <div class="row">
@@ -144,33 +196,8 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
     <div class="meta" id="directrow" hidden>Direct road miles, last point back to first: <input id="direct" type="number" step="0.1" min="0"></div>
     <p class="msg" id="findmsg"></p>
     <p class="note">Road miles are the fastest driving route, never straight-line. They are worked out for you and locked; you can only type them yourself when you are offline or the road service cannot be reached.</p>
-   </div>
-
-   <div class="card">
-    <h2><span class="stepn">2</span>Car and tariff</h2>
-    <div class="grid">
-     <div><label for="car">Car</label><select id="car"></select></div>
-     <div><label for="season">Season shown first</label><select id="season"><option value="sum">Summer</option><option value="nor" selected>Normal</option><option value="win">Winter</option></select></div>
-     <div class="full"><label>Miles per kWh for this car <span id="src" class="src"></span></label>
-      <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-       <div><label for="e_sum">Summer</label><input id="e_sum" type="number" step="0.1" min="0.5"><div class="dfl" id="d_sum"></div></div>
-       <div><label for="e_nor">Normal</label><input id="e_nor" type="number" step="0.1" min="0.5"><div class="dfl" id="d_nor"></div></div>
-       <div><label for="e_win">Winter</label><input id="e_win" type="number" step="0.1" min="0.5"><div class="dfl" id="d_win"></div></div>
-      </div></div>
-     <div class="full"><label for="sup">Electricity supplier / tariff</label><select id="sup"></select></div>
-     <div><label for="cheap">Cheap rate (p per kWh)</label><input id="cheap" type="number" step="0.01" min="0"></div>
-     <div><label for="norm">Normal rate (p per kWh)</label><input id="norm" type="number" step="0.01" min="0"></div>
-     <div><label for="ppl">Petrol (pence per litre)</label><input id="ppl" type="number" step="0.1" min="0"></div>
-     <div><label for="mpg">Petrol car mpg (comparison)</label><input id="mpg" type="number" step="0.5" min="1"></div>
-    </div>
-    <p class="note" id="supnote"></p>
-    <p class="note">Your own figures always win. Anything you type for a car is kept and never replaced by my estimates.</p>
-   </div>
-  </div>
-
-  <div class="col">
-   <div class="card">
-    <h2><span class="stepn">3</span><span id="rtitle">What it costs</span></h2>
+   </div><div class="card" id="quickcar"><div class="grid"><div><label for="car">Car</label><select id="car"></select></div><div><label for="season">Season shown first</label><select id="season"><option value="sum">Summer</option><option value="nor" selected>Normal</option><option value="win">Winter</option></select></div></div></div></div><div class="col"><div class="card">
+    <h2><span id="rtitle">What it costs</span></h2>
     <div class="tiles"><div class="tile ev"><small>EV, cheap rate</small><span class="v" id="h_c1">-</span></div><div class="tile ev"><small>EV, normal rate</small><span class="v" id="h_c2">-</span></div><div class="tile pet"><small>Petrol car</small><span class="v" id="h_p">-</span></div></div>
     <div class="tblwrap"><table id="res"></table></div>
     <div id="diagout" class="note" style="white-space:pre-wrap"></div>
@@ -195,42 +222,26 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
      </div>
      <p class="note">The message has the route, its nicknames, the cost and a link. When the other person opens the link, the same route loads on their device with your nicknames.</p>
     </div>
-   </div>
-   <details class="card" id="tripsbox"><summary id="tripsum">Recent journeys</summary>
-    <div style="margin-top:12px"><div class="sum" id="sumbox"></div><div id="triplist" style="margin-top:10px"></div>
-    <div class="row" style="margin-top:10px"><button class="btn warn sm" id="clear" type="button">Clear all journeys</button></div></div></details>
-  </div>
- </div>
-
- <div class="card"><h2>Share this calculator</h2>
-  <p class="note" style="margin:0 0 8px">Send the link to anyone: it opens on iPhone, Android and any laptop, with nothing to buy and no account.</p>
-  <div class="row"><a class="btn alt sm wa" id="app_wa" target="_blank" rel="noopener" href="#">WhatsApp</a><a class="btn alt sm wa" id="app_mail" target="_blank" rel="noopener" href="#">Email</a><button class="btn alt sm" id="app_native" type="button" hidden>Other apps...</button><button class="btn alt sm" id="app_copy" type="button">Copy link</button><span class="note" id="app_ok"></span></div>
- </div>
- <details class="card"><summary>Settings: cars, home, petrol, tariffs, sharing</summary>
-  <div class="cols" style="margin-top:12px">
-   <div class="col">
-    <div class="card"><h2>Home</h2>
-     <div class="grid">
-      <div><label for="hnick">Nickname</label><input id="hnick" placeholder="Type a nickname here (Home)"></div>
-      <div><label for="hpc">Postcode</label><input id="hpc" placeholder="Type your postcode here" autocapitalize="characters"></div>
-      <div><label for="hhouse">House number or name</label><input id="hhouse" placeholder="Type house number or name (optional)"></div>
-      <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="Type your region here"></div>
-      <div class="full"><label for="myname">Your name (optional)</label><input id="myname" maxlength="30" placeholder="Type your first name here (optional)" autocomplete="off"><small style="color:var(--mute)">Only used so the person who runs MyEV can see who has read a notice. Leave it empty to stay anonymous.</small></div>
-     </div>
-     <div class="row" style="margin-top:10px"><button class="btn alt sm" id="usehome" type="button">Use home as the starting point</button><span class="note" id="homemsg"></span></div>
-     <p class="note">Home is the default starting point and is listed first in every "Saved place" list. It is kept on this device only.</p></div>
-    <div class="card"><h2>Cars</h2>
-     <p class="note" style="margin:0 0 6px">Miles per kWh. Figures marked "guess" are my estimates of real-world use. Overtype any of them and they become yours.</p>
-     <div id="carlist"></div>
-     <div style="margin-top:10px"><label for="carq">Find a car in the database</label>
-      <input id="carq" placeholder="Type the make and model here" autocomplete="off">
-      <div id="carres"></div>
-      <p class="msg" id="carmsg"></p>
-      <p class="note">The built-in list combines Open EV Data (official WLTP figures, licence CDLA-Permissive-2.0) with US EPA fuel economy data (public domain), about 2377 electric cars from 2011 to 2027. The EPA entries are the US versions of cars, so check yours matches. If your car is not listed, add it as typed and enter your own miles per kWh.</p></div></div>
-    <div class="card"><h2>Saved places</h2><div id="placelist"></div><p class="note">Places you saved with a nickname. They appear in the Saved place drop-down on each route point.</p></div>
-   </div>
-   <div class="col">
-    <div class="card"><h2>Petrol and charging</h2>
+   </div></div></div></section><section class="tabsec" id="tab-car" hidden><div class="cols"><div class="col"><div class="card">
+    <h2>Car figures and tariff</h2>
+    <div class="grid">
+     
+     
+     <div class="full"><label>Miles per kWh for this car <span id="src" class="src"></span></label>
+      <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+       <div><label for="e_sum">Summer</label><input id="e_sum" type="number" step="0.1" min="0.5"><div class="dfl" id="d_sum"></div></div>
+       <div><label for="e_nor">Normal</label><input id="e_nor" type="number" step="0.1" min="0.5"><div class="dfl" id="d_nor"></div></div>
+       <div><label for="e_win">Winter</label><input id="e_win" type="number" step="0.1" min="0.5"><div class="dfl" id="d_win"></div></div>
+      </div></div>
+     <div class="full"><label for="sup">Electricity supplier / tariff</label><select id="sup"></select></div>
+     <div><label for="cheap">Cheap rate (p per kWh)</label><input id="cheap" type="number" step="0.01" min="0"></div>
+     <div><label for="norm">Normal rate (p per kWh)</label><input id="norm" type="number" step="0.01" min="0"></div>
+     <div><label for="ppl">Petrol (pence per litre)</label><input id="ppl" type="number" step="0.1" min="0"></div>
+     <div><label for="mpg">Petrol car mpg (comparison)</label><input id="mpg" type="number" step="0.5" min="1"></div>
+    </div>
+    <p class="note" id="supnote"></p>
+    <p class="note">Your own figures always win. Anything you type for a car is kept and never replaced by my estimates.</p>
+   </div><div class="card"><h2>Petrol and charging</h2>
      <div class="grid">
       <div><label for="sppl">Petrol, pence per litre</label><input id="sppl" type="number" step="0.1"></div>
       <div><label for="sdate">Price as of</label><input id="sdate"></div>
@@ -240,12 +251,12 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
      <p class="note" id="fuelnote"></p>
      <div class="row" style="margin-top:8px"><button class="btn alt sm" id="usestd" type="button">Use the standard price</button><button class="btn warn sm" id="reset" type="button">Reset tariffs and fuel to defaults</button></div>
      <p class="note" id="resetmsg"></p>
-     <p class="note">Charging losses add the energy lost between the wall and the battery (typically 8 to 12%). Leave at 0 to match simple mile-per-kWh sums.</p></div>
-    <div class="card"><h2>Electricity suppliers</h2>
+     <p class="note">Charging losses add the energy lost between the wall and the battery (typically 8 to 12%). Leave at 0 to match simple mile-per-kWh sums.</p></div></div><div class="col"><div class="card"><h2>Electricity suppliers</h2>
      <p class="note" style="margin:0 0 6px">Pence per kWh. A rough guide only; check each supplier's own quote for your postcode.</p>
      <div id="suplist"></div>
-     <div class="row" style="margin-top:10px"><button class="btn alt" id="addsup" type="button">Add a supplier</button></div></div>
-    <div class="card"><h2>Share journeys with family</h2>
+     <div class="row" style="margin-top:10px"><button class="btn alt" id="addsup" type="button">Add a supplier</button></div></div></div></div></section><section class="tabsec" id="tab-saved" hidden><div class="cols"><div class="col"><details class="card" id="tripsbox" open><summary id="tripsum">Recent journeys</summary>
+    <div style="margin-top:12px"><div class="sum" id="sumbox"></div><div id="triplist" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px"><button class="btn warn sm" id="clear" type="button">Clear all journeys</button></div></div></details></div><div class="col"><div class="card"><h2>Saved places</h2><div id="placelist"></div><p class="note">Places you saved with a nickname. They appear in the Saved place drop-down on each route point.</p></div></div></div></section><section class="tabsec" id="tab-share" hidden><div class="cols"><div class="col"><div class="card"><h2>Share journeys with family</h2>
      <p class="note" style="margin:0 0 8px" id="sharestat">Not sharing.</p>
      <div id="shareoff">
       <label for="sharename">Group name (optional)</label>
@@ -263,11 +274,27 @@ details>summary{cursor:pointer;font:600 17px var(--head)}
       <div class="row"><button class="btn alt sm" id="syncnow" type="button">Sync now</button><button class="btn alt sm" id="newinvite" type="button">New code</button><button class="btn warn sm" id="leavegrp" type="button">Leave this group</button><button class="btn warn sm" id="disbandgrp" type="button">End sharing for everyone</button></div>
      </div>
      <p class="msg" id="syncstatus"></p>
-     <p class="note">A pair is just you and one other person. Once your group is full, nobody else can join it or see anything. A device can only be in one group. The code lasts 10 minutes and the other person needs it only once. Journeys, favourites and saved places then stay in step on every phone in the group, and the app keeps working without a connection.</p></div>
-   </div>
-  </div>
-  <p class="note">To get an icon on your phone: open this page in the phone browser, then use the browser menu, Add to Home screen (Safari: Share, then Add to Home Screen). Journeys and settings stay in that browser on that device.</p>
- </details>
+     <p class="note">A pair is just you and one other person. Once your group is full, nobody else can join it or see anything. A device can only be in one group. The code lasts 10 minutes and the other person needs it only once. Journeys, favourites and saved places then stay in step on every phone in the group, and the app keeps working without a connection.</p></div></div><div class="col"><div class="card"><h2>Share this calculator</h2>
+  <p class="note" style="margin:0 0 8px">Send the link to anyone: it opens on iPhone, Android and any laptop, with nothing to buy and no account.</p>
+  <div class="row"><a class="btn alt sm wa" id="app_wa" target="_blank" rel="noopener" href="#">WhatsApp</a><a class="btn alt sm wa" id="app_mail" target="_blank" rel="noopener" href="#">Email</a><button class="btn alt sm" id="app_native" type="button" hidden>Other apps...</button><button class="btn alt sm" id="app_copy" type="button">Copy link</button><span class="note" id="app_ok"></span></div>
+ </div></div></div></section><section class="tabsec" id="tab-more" hidden><div class="cols"><div class="col"><div class="card"><h2>Home</h2>
+     <div class="grid">
+      <div><label for="hnick">Nickname</label><input id="hnick" placeholder="Type a nickname here (Home)"></div>
+      <div><label for="hpc">Postcode</label><input id="hpc" placeholder="Type your postcode here" autocapitalize="characters"></div>
+      <div><label for="hhouse">House number or name</label><input id="hhouse" placeholder="Type house number or name (optional)"></div>
+      <div><label for="hreg">Electricity region</label><input id="hreg" placeholder="Type your region here"></div>
+      <div class="full"><label for="myname">Your name (optional)</label><input id="myname" maxlength="30" placeholder="Type your first name here (optional)" autocomplete="off"><small style="color:var(--mute)">Only used so the person who runs MyEV can see who has read a notice. Leave it empty to stay anonymous.</small></div>
+     </div>
+     <div class="row" style="margin-top:10px"><button class="btn alt sm" id="usehome" type="button">Use home as the starting point</button><span class="note" id="homemsg"></span></div>
+     <p class="note">Home is the default starting point and is listed first in every "Saved place" list. It is kept on this device only.</p></div><div class="card"><h2>Cars</h2>
+     <p class="note" style="margin:0 0 6px">Miles per kWh. Figures marked "guess" are my estimates of real-world use. Overtype any of them and they become yours.</p>
+     <div id="carlist"></div>
+     <div style="margin-top:10px"><label for="carq">Find a car in the database</label>
+      <input id="carq" placeholder="Type the make and model here" autocomplete="off">
+      <div id="carres"></div>
+      <p class="msg" id="carmsg"></p>
+      <p class="note">The built-in list combines Open EV Data (official WLTP figures, licence CDLA-Permissive-2.0) with US EPA fuel economy data (public domain), about 2377 electric cars from 2011 to 2027. The EPA entries are the US versions of cars, so check yours matches. If your car is not listed, add it as typed and enter your own miles per kWh.</p></div></div></div><div class="col"><div class="card"><h2>Look and tips</h2><label class="chk" for="theme" style="text-transform:none;letter-spacing:0;font-size:15px;margin-bottom:10px">Theme <select id="theme" style="width:auto"><option value="auto">Auto (system)</option><option value="dark">Dark</option><option value="light">Light</option></select></label><label class="chk"><input type="checkbox" id="opt_tips"> Show a "Did you know?" tip each day</label><p class="note">A small card at the top of the Trip tab. "Hide for today" or switch it off here.</p></div><div class="card"><h2>About this app</h2><p class="note" style="margin:0" id="aboutver"></p><p class="note">To get an icon on your phone: open this page in the phone browser, then use the browser menu, Add to Home screen (Safari: Share, then Add to Home Screen). Journeys and settings stay in that browser on that device.</p></div></div></div></section></main>
+<nav id="tabs" aria-label="Sections"><button type="button" data-tab="trip" class="on"><span class="ic">🧭</span>Trip</button><button type="button" data-tab="car"><span class="ic">🚗</span>Car</button><button type="button" data-tab="saved"><span class="ic">⭐</span>Saved</button><button type="button" data-tab="share"><span class="ic">👥</span>Share</button><button type="button" data-tab="more"><span class="ic">⚙️</span>More</button></nav>
 </div>
 
 <script>
@@ -281,7 +308,7 @@ document.getElementById("theme").onchange=()=>{tv=document.getElementById("theme
 const uid=()=>Math.random().toString(36).slice(2,9);
 /* small confirmation message at the bottom of the screen, so people always see that something happened */
 let toastT=0,lastToast=0;function toast(msg,bad){let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");t.setAttribute("aria-live","polite");
- t.style.cssText="position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:9999;max-width:92vw;padding:14px 20px;border-radius:18px;font-size:18px;font-weight:600;box-shadow:0 6px 22px rgba(0,0,0,.4);transition:opacity .2s;opacity:0;pointer-events:none;text-align:center";document.body.appendChild(t)}
+ t.style.cssText="position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:9999;width:max-content;max-width:92vw;padding:14px 20px;border-radius:18px;font-size:18px;font-weight:600;box-shadow:0 6px 22px rgba(0,0,0,.4);transition:opacity .2s;opacity:0;pointer-events:none;text-align:center";document.body.appendChild(t)}
  t.style.background=bad?"#b3261e":"#1f7a4d";t.style.color="#fff";t.textContent=msg;lastToast=Date.now();t.style.opacity="1";clearTimeout(toastT);toastT=setTimeout(()=>{t.style.opacity="0"},4200)}
 /* any setting that is changed gets a confirmation, unless a specific one was already shown */
 document.addEventListener("change",e=>{const el=e.target;if(!el||!el.tagName||!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))return;
@@ -381,11 +408,10 @@ function renderPts(){
  $("pts").innerHTML=P.map((q,i)=>{
   const meta=i===0?`<div class="meta">Starting point</div>`:`<div class="meta">Road miles from ${esc(nm(i-1,n))}: <input data-leg="${i-1}" type="number" step="0.1" min="0" value="${legMiles()[i-1]||""}" aria-label="Road miles from previous point"${legLocked()?" readonly":""}> mi</div>`;
   return `<div class="pt" data-i="${i}"><div class="pthead"><span class="badge">${role(i,n)}</span>
-   <span class="ptbtns"><button class="btn alt sm" data-up="${i}" type="button" ${i===0?"disabled":""} aria-label="Move up">&#9650; Up</button>
-   <button class="btn alt sm" data-dn="${i}" type="button" ${i===n-1?"disabled":""} aria-label="Move down">&#9660; Down</button>
+   <span class="ptbtns"><button class="btn alt sm" data-up="${i}" type="button" ${i===0?"disabled":""} aria-label="Move up">&#9650;</button>
+   <button class="btn alt sm" data-dn="${i}" type="button" ${i===n-1?"disabled":""} aria-label="Move down">&#9660;</button>
    ${n>2?`<button class="btn warn sm" data-rm="${i}" type="button" aria-label="Remove">Remove</button>`:""}</span></div>
-   <div class="grid"><div class="full"><label>Saved place</label><select data-pick="${i}"><option value="">${placeOpts?"Pick a saved place...":"No saved places yet"}</option>${placeOpts}</select></div><div class="full"><label>Nickname (optional)</label><input data-i="${i}" data-f="n" list="places" value="${esc(q.n||"")}" placeholder="Type a nickname here (optional)"></div><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="Type house number or name (optional)"></div>
-   <div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="Type postcode here" autocapitalize="characters"></div><div class="full"><button class="btn alt sm" data-sp="${i}" type="button">Save this place for next time</button> <span class="note" data-spmsg="${i}"></span></div></div>${meta}</div>`}).join("");
+   <div class="grid"><div class="full"${placeOpts?"":" hidden"}><label>Saved place</label><select data-pick="${i}"><option value="">${placeOpts?"Pick a saved place...":"No saved places yet"}</option>${placeOpts}</select></div><div><label>Postcode</label><input data-i="${i}" data-f="p" value="${esc(q.p)}" placeholder="Type postcode here" autocapitalize="characters"></div><div><label>House no. or name</label><input data-i="${i}" data-f="h" value="${esc(q.h)}" placeholder="Type house no. or name here"></div><div class="full"><details class="ptmore"${(q.n&&q.n.trim())?" open":""}><summary>Nickname, and save this place</summary><div class="grid" style="margin-top:8px"><div class="full"><label>Nickname (optional)</label><input data-i="${i}" data-f="n" list="places" value="${esc(q.n||"")}" placeholder="Type a nickname here (optional)"></div><div class="full"><button class="btn alt sm" data-sp="${i}" type="button">Save this place for next time</button> <span class="note" data-spmsg="${i}"></span></div></div></details></div></div>${meta}</div>`}).join("");
  $("pts").querySelectorAll("input[data-f]").forEach(el=>el.addEventListener("input",()=>{R().pts[+el.dataset.i][el.dataset.f]=el.dataset.f==="p"?el.value.toUpperCase():el.value;save();refreshLegs();schedule(350)}));
  $("pts").querySelectorAll('input[data-f="n"]').forEach(el=>el.addEventListener("change",()=>{const q=R().pts[+el.dataset.i],pl=(S.places||{})[(q.n||"").trim().toLowerCase()];if(pl){q.h=pl.h;q.p=pl.p;save();renderPts();refreshLegs();schedule(100)}}));
  $("pts").querySelectorAll("input[data-leg]").forEach(el=>el.addEventListener("input",()=>{const i=+el.dataset.leg;R().cache[pairKey(R().pts[i],R().pts[i+1])]=parseFloat(el.value)||0;save();calc()}));
@@ -564,7 +590,8 @@ function waitWhy(){const P=R().pts,n=P.length;const miss=[];P.forEach((q,i)=>{if
  if(net.fails>=3)return "The road-distance service is not answering. Type the miles in the small box under the To point, or press Recalculate miles to try again.";
  return "Working out the driving miles... the cost appears here in a moment. If this stays here for more than about 15 seconds, press the button below."}
 function diagBox(){return `<div style="margin-top:8px"><button class="btn alt sm" id="diagbtn" type="button">Check what is wrong</button></div>`}
-function calc(){try{calc0()}catch(e){try{$("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:#b3261e">Section 3 hit a problem: '+esc(String(e&&e.message||e))+'. Please send this sentence to Claude. '+"</td></tr>"+'<tr><td>'+diagBox()+"</td></tr>"}catch(_){}}}
+function calc(){calcA();try{miniSync()}catch(_){}}
+function calcA(){try{calc0()}catch(e){try{$("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:#b3261e">Section 3 hit a problem: '+esc(String(e&&e.message||e))+'. Please send this sentence to Claude. '+"</td></tr>"+'<tr><td>'+diagBox()+"</td></tr>"}catch(_){}}}
 function calc0(){
  const car=carNow();if(!car){$("res").innerHTML='<tr><td style="text-align:left;white-space:normal;color:#b3261e">No car is selected. Choose a car in section 1.</td></tr>';return}
  const P=R().pts,n=P.length,L=legMiles();
@@ -723,7 +750,7 @@ $("newinvite").onclick=()=>shareCall("/v1/invite",{space:S.sync.space},d=>{apply
 $("syncnow").onclick=()=>syncNow(true);
 $("gnamesave").onclick=()=>{const n=$("gname").value.trim();shareCall("/v1/rename",{space:S.sync.space,name:n},d=>{applyGroup(d);toast(n?"✓ Group named: "+n:"✓ Group name cleared")})};
 /* easy way in: a button at the top opens the sharing box; a WhatsApp link carries the code and fills the box */
-function openShare(){let d=$("sharestat").closest("details");while(d){d.open=true;d=d.parentElement&&d.parentElement.closest("details")}
+function openShare(){showTab("share");
  $("sharestat").closest(".card").scrollIntoView({behavior:"smooth",block:"start"});
  setTimeout(()=>{if(!S.sync.space)try{$("joincode").focus()}catch(e){}},600)}
 $("sharetop").onclick=openShare;
@@ -747,7 +774,7 @@ $("app_wa").href="https://wa.me/?text="+encodeURIComponent(APP_TEXT);
 $("app_mail").href="mailto:?subject="+encodeURIComponent("MyEV Calculator")+"&body="+encodeURIComponent(APP_TEXT);
 if(navigator.share){$("app_native").hidden=false;$("app_native").onclick=()=>{try{navigator.share({title:"MyEV Calculator",text:APP_TEXT,url:APP_URL}).catch(()=>{})}catch(e){}}}
 $("app_copy").onclick=()=>{const ok=m=>{toast(m==="Copied"?"✓ Copied":m,m!=="Copied");$("app_ok").textContent=m;setTimeout(()=>$("app_ok").textContent="",2500)};try{navigator.clipboard.writeText(APP_TEXT).then(()=>ok("Copied"),()=>ok("Copy blocked here"))}catch(e){ok("Copy blocked here")}};
-const BUILD="2026-11-14e";
+const BUILD="2026-11-23a";
 /* update check: compares this copy with the newest published one and offers a one-tap update (a website: update = reload with the fresh copy) */
 async function checkUpdate(){
  if(!/github\.io$/.test(location.hostname))return;
@@ -961,14 +988,36 @@ async function fetchCatalog(){
 }
 setInterval(()=>{if(!document.hidden)fetchCatalog()},30*60*1000);
 
+/* ---------- bottom tabs, sticky cost strip, tip of the day (2026-11-23) ---------- */
+const TABS=["trip","car","saved","share","more"];
+function showTab(t){if(!TABS.includes(t))t="trip";
+ TABS.forEach(x=>{const p=$("tab-"+x);if(p)p.hidden=x!==t;const b=document.querySelector('#tabs [data-tab="'+x+'"]');if(b){b.classList.toggle("on",x===t);b.setAttribute("aria-current",x===t?"page":"false")}});
+ $("mini").style.display=t==="trip"?"":"none";try{sessionStorage.setItem("myev-tab",t)}catch(e){}window.scrollTo(0,0)}
+$("tabs").addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab)});
+window.addEventListener("scroll",()=>{$("topbar").classList.toggle("scrolled",window.scrollY>4)},{passive:true});
+function miniSync(){const m=$("mini");if(!m)return;const a=$("h_c1").textContent,b=$("h_c2").textContent,p=$("h_p").textContent;
+ if(!a||a==="-"){m.innerHTML='<span class="mut">Type the From and To postcodes to see the cost</span>';return}
+ const t=String($("rtitle").textContent||"").replace(/\s*\(.*$/,"");
+ m.innerHTML='<div class="mi ev"><small>EV cheap</small><b>'+esc(a)+'</b></div><div class="mi ev"><small>EV normal</small><b>'+esc(b)+'</b></div><div class="mi pet"><small>Petrol car</small><b>'+esc(p)+'</b></div><div class="mi mt"><small>'+esc(t)+'</small></div>'}
+const TIPS=[["work out a journey with just two postcodes", "Type the From and To postcodes. The road miles and the cost appear by themselves."], ["start every journey from home", "Set your home on the More tab and it becomes the starting point of every new journey."], ["see the cost without scrolling", "The strip at the top of the Trip tab always shows the cheap rate, normal rate and petrol cost."], ["add stops on the way", "Tick \"Add stops on the way\" for up to two stops. The cost is shown leg by leg."], ["save a place with a nickname", "Type a nickname and press \"Save this place for next time\". It then appears in the Saved place list."], ["keep a journey for next time", "Name it and press Save journey. Find it again on the Saved tab, with any favourites."], ["send a route to a friend", "Press Share route. When they open the link, the same route loads on their phone."], ["share journeys with family", "On the Share tab, start a group and give the 4-digit code to the other person. It works for 10 minutes."], ["compare summer and winter", "The table shows every season. Choose which one is highlighted with Season shown first."], ["correct a wrong car figure", "Overtype the miles per kWh on the Car tab. A red \"reset\" button puts the estimate back."], ["find your car in the database", "On the More tab, type the make and model. About two thousand electric cars are listed."], ["check the electricity tariff", "The Car tab lists current supplier tariffs. The \"last checked\" date shows how fresh they are."], ["keep the petrol price up to date", "The standard petrol price updates itself four times a day. \"Use the standard price\" puts it back."], ["go straight back from a stop", "Tick \"Ignore stops on return\" to cost the return as a direct drive."], ["copy a cost for WhatsApp", "Press Copy for WhatsApp to paste the route and costs into any message."], ["use it with no signal", "It works offline. Type the miles into the small boxes and the cost still appears."], ["put it on your home screen", "Open the page in your phone browser, then use the browser menu and Add to Home screen."], ["allow for charging losses", "On the Car tab you can add 8 to 12 percent for energy lost between the wall and the battery."]];
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function tipIndex(){const d=new Date(),start=new Date(d.getFullYear(),0,0),day=Math.floor((d-start)/864e5);return ((day+(S.tipOff||0))%TIPS.length+TIPS.length)%TIPS.length}
+function renderTip(){const el=$("tipslot");if(!el)return;
+ if(S.tips===false||S.tipHidden===ymd(new Date())){el.innerHTML="";return}
+ const [a,b]=TIPS[tipIndex()];
+ el.innerHTML='<div class="card tipcard"><div class="tipq">?</div><div style="flex:1"><div class="tipk">DID YOU KNOW?</div><b>You can '+esc(a)+'.</b><div class="note" style="margin-top:2px">'+esc(b)+'</div><div class="row"><button class="btn sm alt" type="button" data-tip="next">Next tip</button><button class="btn sm alt" type="button" data-tip="hide">Hide for today</button></div></div></div>'}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-tip]");if(!b)return;
+ if(b.dataset.tip==="next"){S.tipOff=(S.tipOff||0)+1;save();renderTip()}
+ else{S.tipHidden=ymd(new Date());save();renderTip();toast("✓ Tip hidden until tomorrow. Switch tips off in More.")}});
+$("opt_tips").onchange=()=>{S.tips=$("opt_tips").checked;save();renderTip();toast(S.tips?"✓ Daily tips are on":"✓ Daily tips are off")};
 function init(){updatePlaces();
  if(S.home.postcode&&!R().pts[0].p.trim()){R().pts[0]={h:S.home.house||"",p:S.home.postcode,n:S.home.nick||"Home"}}
- showWelcome();
+ showWelcome();$("opt_tips").checked=S.tips!==false;renderTip();$("aboutver").textContent="MyEV Calculator, version "+BUILD+".";
  $("ret").checked=R().ret!==false;$("ign").checked=!!R().ign;
  fillSelects();loadCar();loadSupplier();loadFuel();loadSet();renderCars();renderSups();renderTrips();renderPts();renderEdit();refreshLegs();schedule(400);renderCatalogUI();
 }
 const gotShared=loadShared();
-init();window.__ok=1;try{joinLink()}catch(e){}
+init();window.__ok=1;try{let t0="trip";try{t0=sessionStorage.getItem("myev-tab")||"trip"}catch(e){}showTab(t0);miniSync()}catch(e){}try{joinLink()}catch(e){}
 renderShare();renderNet();probe().then(ok=>{setOnline(ok);if(ok)fetchCatalog()});if(S.sync.space)scheduleSync();regSW();
 if(gotShared){$("findmsg").textContent="Loaded a route that was shared with you. Check the car and tariff, then read the cost.";S.welcomed=true;$("welcome").hidden=true}
 })();
